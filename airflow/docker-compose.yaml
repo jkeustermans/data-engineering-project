@@ -79,7 +79,8 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
-    - ${AIRFLOW_PROJ_DIR:-.}/home/jkeustermans/JOpleiding/Data-Engineering/Project/airflow/data:/opt/airflow/data
+    # - ${AIRFLOW_PROJ_DIR:-.}/home/jkeustermans/JOpleiding/Data-Engineering/Project/airflow/data:/opt/airflow/data
+    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
   networks:
     - landingzone
     - orchestration

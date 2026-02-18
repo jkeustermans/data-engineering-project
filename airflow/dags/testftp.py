@@ -3,8 +3,8 @@ from airflow.providers.ftp.operators.ftp import FTPFileTransmitOperator, FTPOper
 from datetime import datetime, timedelta
 
 default_args = {
-    "retries": 2,
-    "retry_delay": 30,
+    "retries": 1,
+    "retry_delay": 5,
 }
 
 with DAG(
@@ -17,17 +17,16 @@ with DAG(
     upload_task = FTPFileTransmitOperator(
         task_id="upload_to_ftp",
         ftp_conn_id="ftp_server",
-        # local_filepath="/home/jkeustermans/JOpleiding/Data-Engineering/Project/airflow/data/data.csv",
-        local_filepath="/opt/airflow/data/data.csv",
-        remote_filepath="data.csv",
+        local_filepath="data/processed_data.csv",           # path in container met bind volume op host dat processed data file bevat
+        remote_filepath="inbound/processed/data.csv",       # path op ftp server dat processed data zal ontvangen
         operation=FTPOperation.PUT,
         create_intermediate_dirs=False,
     )
     download_task = FTPFileTransmitOperator(
         task_id="download_from_ftp",
         ftp_conn_id="ftp_server",
-        local_filepath="/opt/airflow/data/data2.csv",
-        remote_filepath="test.txt",
+        local_filepath="data/raw_data.csv",                 # path in container met bind volume waar raw data naar gedownload zal worden
+        remote_filepath="outbound/raw/data.csv",            # path op ftp server met file die raw data bevat om gedownload te worden
         operation=FTPOperation.GET,
-        create_intermediate_dirs=False,
+        create_intermediate_dirs=True,
     )
