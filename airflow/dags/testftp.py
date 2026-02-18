@@ -1,19 +1,21 @@
 from airflow import DAG
 from airflow.providers.ftp.operators.ftp import FTPFileTransmitOperator, FTPOperation
 from datetime import datetime, timedelta
+from airflow.sdk import dag, task
 
 default_args = {
     "retries": 1,
     "retry_delay": 5,
 }
 
-with DAG(
-    dag_id="test_ftp_dag",
+@dag(
+    dag_id="test_ftp",
     start_date=datetime(2026, 1, 1),
     schedule=timedelta(days=1),
     catchup=False,
     default_args=default_args,
-) as dag:
+)
+def Test_Ftp():
     upload_task = FTPFileTransmitOperator(
         task_id="upload_to_ftp",
         ftp_conn_id="ftp_server",
@@ -22,6 +24,7 @@ with DAG(
         operation=FTPOperation.PUT,
         create_intermediate_dirs=False,
     )
+    
     download_task = FTPFileTransmitOperator(
         task_id="download_from_ftp",
         ftp_conn_id="ftp_server",
@@ -30,3 +33,14 @@ with DAG(
         operation=FTPOperation.GET,
         create_intermediate_dirs=True,
     )
+
+    @task()
+    def read_csv_and_process():
+        print('ditiseentest')
+        with open("data/processed_data.csv", "r") as file:
+            content = file.read()
+            print(content)
+
+    download_task >> read_csv_and_process() >> upload_task
+
+dag = Test_Ftp()
