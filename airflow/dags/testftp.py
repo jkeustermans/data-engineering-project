@@ -2,6 +2,11 @@ from airflow import DAG
 from airflow.providers.ftp.operators.ftp import FTPFileTransmitOperator, FTPOperation
 from datetime import datetime, timedelta
 from airflow.sdk import dag, task
+from pathlib import Path
+import pandas as pd
+import numpy as np
+import psycopg as pgs
+from sqlalchemy import create_engine
 
 default_args = {
     "retries": 1,
@@ -36,10 +41,13 @@ def Test_Ftp():
 
     @task()
     def read_csv_and_process():
-        print('ditiseentest')
-        with open("data/processed_data.csv", "r") as file:
-            content = file.read()
-            print(content)
+        # Lees gedownloade file, pas eenvoudige Pandas data cleaning toe en schrijf content van het DataFrame weg naar tabel in DWH
+        df_csv = pd.read_csv("data/raw_data.csv", dtype={"id": str, "naam": str, "salaris": np.int32})    # Laad downloaded file op Host
+        df_csv.loc[df_csv['salaris'] < 1500, 'salaris'] = 1500      # Data cleaning: ken een minimum salaris toe
+        engine = create_engine("postgresql+psycopg://dwh:dwh@dwh:5432/dwh")
+        df_csv.to_sql("test", con=engine, if_exists="append", index=False)
+
+    # read_csv_and_process.__wrapped__()
 
     download_task >> read_csv_and_process() >> upload_task
 
