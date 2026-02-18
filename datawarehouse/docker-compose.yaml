@@ -1,0 +1,20 @@
+services:
+  dwh:
+    image: postgres:16
+    ports:
+      - 5433:5432
+    environment:
+      POSTGRES_USER: dwh
+      POSTGRES_PASSWORD: dwh
+      POSTGRES_DB: dwh
+    volumes:
+      - postgres-dwh-volume:/var/lib/postgresql/data
+      - /init:/docker-entrypoint-initdb.d
+    networks:
+      - orchestration
+    restart: always
+volumes:
+  postgres-dwh-volume:
+networks:
+  orchestration:
+    external: true
