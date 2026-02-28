@@ -1,0 +1,19 @@
+services:
+  mongodb:
+    image: mongo:8.2.3-noble
+    ports:
+      - 27017:27017
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=test
+      - MONGO_INITDB_ROOT_PASSWORD=test
+      - MONGO_INITDB_DATABASE=test
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo_scripts:/docker-entrypoint-initdb.d
+    networks:
+      - orchestration
+volumes:
+  mongo_data:
+networks:
+  orchestration:
+    external: true

@@ -175,9 +175,16 @@ Voor Datawarehousing zijn er een aantal patronen die steeds terugkomen (Leerboek
 	- Opmerking: alternatief zou zijn: SQLAlchemy
 - Link export DataFrame naar Database via Pandas	
 	- https://pandas.pydata.org/docs/user_guide/io.html#sql-queries
+- Integratie MongoDB
+	- Basis opzet connectiviteit
+		- https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/
+	- Pandas conversion df to json
+		- https://docs.vultr.com/python/third-party/pandas/DataFrame/to_json
+	- Basis data manipulatie MongoDB & Python
+		- https://www.geeksforgeeks.org/mongodb/mongodb-python-insert-update-data/
 
 ## Journal
-- Week 16 feb
+### Week 16 feb
 	- Opzet & Config lightweight ftp server (Docker)
 	- Testen FTP server via curl
 		- Uitzoeken gebruik curl mbt. ftp transmissies (oa. command vs passieve ports)
@@ -211,6 +218,36 @@ Voor Datawarehousing zijn er een aantal patronen die steeds terugkomen (Leerboek
 		- Introduceren gebruik Pandas: toevoegen van een (eevoudige) data cleaning
 		- Wegschrijven gegevens van DataFrame naar DWH database
 		- Integreren psycopg library voor PostgreSQL
+### Week 23 feb
+- Opzet MongoDB
+	- Schrijven docker compose file
+	- Opzet init script voorbereiding MongoDB
+	- Testen opzet
+	- Aandachtspunt: MongoDB docker dient deel uit te maken van hetzelfde docker netwerk als Apache Airflow
+- Integratie mongodb in Airflow proces
+	- Opnemen extra library pymongo in Airflow container (rebuild image)
+	- Uitzoeken connectie vanuit Python naar MongoDB en toevoegen document aan MongoDB collection
+	- Uitbreiden code DAG voor eenvoudige verwerking csv file
+	- Testen opzet lokaal (Python)
+	- Testen opzet in Airflow
+- Experimenteel
+	- Geëxperimenteerd met aantal concepten die eventueel in latere instantie opgenomen kunnen worden:
+		- MCP/Lokale/LLM/Langchain
+			- Technologieën
+				- Lokale LLM installatie (Ollama - meerdere modellen)
+					- Ollama (meerdere modellen: 3.1, 3.2 en qwen2.5-coder)
+				- MCP Server
+					- mcp library
+				- Langchain
+			- Opzet
+				- Test Database opgezet (MySQL via docker compose)
+				- Aantal test-scenario's geschreven: MCP scenario & Langchain scenario
+				- Zie files onder experimenteel/mcp
+			- Opmerkingen
+				- De eerste resultaten zijn teleurstellend. Ik dien verder uit te zoeken waarom dit zo is. Eén van de factoren is wellicht mijn gebrek aan kennis omtrent MCP/inzet LLMs/... Een andere mogelijkheid is dat het model dat ik lokaal draai misschien niet krachtig genoeg is
+				- De code is afkomstig uit online resources en verbetert adh van AI
+				- Op moment van schrijven is de code niet volledig duidelijk voor mij zodus ik dien verder studiewerk hieromtrent uit te voeren
+
 ## Algemene Resources
 - Leerboek Business Intelligence (Peter ter Braake - 2022)
 	- Status: gelezen

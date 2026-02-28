@@ -7,6 +7,8 @@ import pandas as pd
 import numpy as np
 import psycopg as pgs
 from sqlalchemy import create_engine
+from pymongo import MongoClient
+import json
 
 default_args = {
     "retries": 1,
@@ -41,11 +43,28 @@ def Test_Ftp():
 
     @task()
     def read_csv_and_process():
-        # Lees gedownloade file, pas eenvoudige Pandas data cleaning toe en schrijf content van het DataFrame weg naar tabel in DWH
-        df_csv = pd.read_csv("data/raw_data.csv", dtype={"id": str, "naam": str, "salaris": np.int32})    # Laad downloaded file op Host
+        # Lees gedownloade file, pas eenvoudige Pandas data cleaning toe
+        # Schrijf content van het DataFrame weg naar tabel in DWH
+        # Schrijf content van het DataFrame weg naar een mongodb collection
+        FILE_AIRFLOW_BASED = "data/raw_data.csv"
+        FILE_LOCAL_RUN = "/home/jkeustermans/JOpleiding/Data-Engineering/Project/airflow/data/raw_data.csv"
+        df_csv = pd.read_csv(FILE_AIRFLOW_BASED, dtype={"id": str, "naam": str, "salaris": np.int32})    # Laad downloaded file op Host
         df_csv.loc[df_csv['salaris'] < 1500, 'salaris'] = 1500      # Data cleaning: ken een minimum salaris toe
+        write_csv_content_to_dwh(df_csv)
+        write_csv_content_to_mongodb(df_csv)
+
+    def write_csv_content_to_dwh(df_csv):
         engine = create_engine("postgresql+psycopg://dwh:dwh@dwh:5432/dwh")
         df_csv.to_sql("test", con=engine, if_exists="append", index=False)
+    
+    def write_csv_content_to_mongodb(df_csv):
+        CONNECTION_STRING = "mongodb://test:test@mongodb:27017"
+        with MongoClient(CONNECTION_STRING) as client:
+            db = client["test"]
+            collection_test = db["test_documents"]
+            json_str = df_csv.to_json()
+            json_object = json.loads(json_str)
+            collection_test.insert_one(json_object)
 
     # read_csv_and_process.__wrapped__()
 
