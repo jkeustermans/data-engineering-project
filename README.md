@@ -1,20 +1,34 @@
 # Data-Engineering Project (2025-2026)
 ## Inhoudstafel
 - Inleidend
+- Plan van aanpak
 - Architecturaal
 	- Algemeen
 	- Beschrijving architectuur
 		- Duiding
 		- Architectuur
 	- Patronen
+		- Datawarehouse architectuur
+		- Orchestration
 - Technisch Ontwerp
 	- Staging Area
+	- Orchestrator
+	- Datawarehouse
+	- Document Database
+	- Google Cloud
+- Implementation
+	- FTP Server
 	- Apache Airflow
 - Journal
 - Algemene Resources
+
 ## Inleidend
 Dit is een 'Work In Progress'-document en zal aan veranderingen onderhevig zijn. Bedoeling van dit document is om een high-level overzicht te geven van de technische opzet van het project. Tevens zullen er secties opgenomen worden waarin de progressie van het project beschreven wordt (zie sectie Journal). Dit zal twee aspecten bevatten, enerzijds de activiteiten inzake de geïmplementeerde code & configuratie met wat technische duiding, anderzijds het verloop van de opzet. Het laatste aspect dient inzicht te geven in de aanpak, welke concepten tegengekomen zijn, wat de moeilijkere aspecten waren en tenslotte bronverwijzingen.
 Om de tekst niet al te zwaar te maken zullen de meeste zaken als bullet points genoteerd worden.
+
+## Plan van aanpak
+In eerste instantie had ik een 4-tal fases gedefinieerd die ik zou volgen, startende met een eenvoudige Docker setup. Echter tijdens de ontwikkeling van bedrijfsprojecten wordt meestal in het begin van het project een aantal use cases geïdentificeerd die als risicovol worden aanzien. Deze worden dan reeds in de elaboration phase ontwikkeld zodat de risico's zo snel mogelijk worden gemitigeerd (of indien nodig, kan men vooraan het ontwikkelproces nog de nodige aanpassingen/alternatieven voorzien). Daarom heb ik besloten om een aantal technische integraties behorende tot de minimale opzet naar het begin van het ontwikkelproces te verplaatsen. Het gevolg is dat Apache Airflow naar voor is getrokken.
+
 ## Architecturaal
 ### Algemeen
 Deze sectie bevat informatie betreffende de architecturale opzet van het project. Dit is dus een high-level beschrijving. Voor verdere details zijn er andere secties in het document opgenomen.
@@ -25,18 +39,15 @@ De opzet is voorlopig vrij eenvoudig. Via een webapplicatie kunnen ziekenhuizen 
 - Data Scientists en onderzoekers gegevens aanreiken in een formaat dat makkelijk te gebruiken is de R-code voor statistisch onderzoek
 - Data Sharing met externe partners (WHO, andere universiteiten/wetenschappelijke instellingen)
 Bedoeling is om een data-architectuur op te zetten waarbij gegevens geëxtraheerd, getransformeerd en opgeladen worden naar een formaat dat voldoet aan de eisen van de bovenstaande partijen.
-Belangrijk: de implementatie van het project zal een sterk vereenvoudigde opzet zijn van wat er in realiteit geïmplementeerd gaat worden.
+Belangrijk: de implementatie van het project zal een sterk vereenvoudigde opzet zijn van wat er in realiteit geïmplementeerd gaat worden. De finale opzet dient nog verder uitgewerkt te worden. Deze zal elementen bevatten zoals Database Replication. Binnen deze project opzet zal dit weggelaten worden en gaan we uit van een Staging Area waar we files opzetten die dan een (partiële) weerspiegeling zal zijn van de gegevens uit de OLTP Database.
 #### Architectuur
 De **vereenvoudigde** opzet zal bestaan uit een aantal componenten die via Docker-compose opgezet worden (Single Host):
 - FTP Server zal fungeren als een Staging Area.
 	- Hier zullen bestanden op komen te staan die:
 		- De input gaan vormen voor het ELT proces om deze data te converteren naar de gewenste formaten
 		- Output bestanden die het resultaat zijn van bepaalde verwerkingen (Reverse ETL)
-	- Men zou dit ** met de nodige relativiteit ** kunnen aanzien als een (very) poor man's Datalake
-	- Een alternatief hiervoor zou zijn het gebruik van Apache Iceberg
-	- Resources:
-		- Leerboek Business Intelligence (Peter ter Braake - 2022)
-		- Apache Iceberg Explained: A Complete Guide for Beginners
+	- Dit is erg relatief en men zou dit kunnen zien als een '(very) poor man's Datalake'
+	- Een alternatief hiervoor zou het gebruik zijn van Apache Iceberg of Google dataproc op het Google Cloud Platform
 - Apache Airflow
 	- Orchestrator die het ELT proces voor zijn rekening neemt
 	- Zal bestanden ophalen van de FTP Server
@@ -44,42 +55,56 @@ De **vereenvoudigde** opzet zal bestaan uit een aantal componenten die via Docke
 		- Data Cleaning
 		- Data Transformation
 		- Data Enrichment
-	- Het opgeschoonde bestand zal worden weggeschreven naar disk ((voorlopig) bind mount met de host)
+	- Het opgeschoonde bestand zal worden weggeschreven naar disk ((voorlopig) een bind mount met de host)
 		- Dit zal een Docker mount bind zijn zodat het resultaat bewaard blijft nadat de containers vernietigd worden
 		- Opmerking: de Airflow workers zullen access hebben tot dit bestand. Dit wil zeggen dat we in principe zouden geconfronteerd kunnen worden met race conditions. Ik veronderstel dat het Airflow proces zo ingericht kan worden dat er slechts 1 Airflow Worker tegelijk het bestand kan verwerken
 	-Subcomponenten Airflow
-		- PostgreSQL Database
+		- PostgreSQL Database (bevat de meta-data over de Apache Airflow opzet en concrete Flows)
 		- Redis
 - PostgreSQL
-	- Deze database zal fungeren als een Datawarehouse
+	- Opgelet: dit is niet de Apache Airflow instance
+	- Deze database instance zal fungeren als een Datawarehouse
 	- Normaliter worden er hier technologieën gebruikt als Snowflake of Teradata. Echter de dataset is relatief klein en zodus zou PostgreSQL hiervoor dienen te volstaan
-	- Opmerking: ook in de specifieke realiteit van de onderzoeksgroep zal er hiervoor een RDBMS gebruikt worden. Twee redenen: dataset is relatief klein en financiële situatie van de onderzoeksgroep laat niet toe dure investeringen te doen
+	- Opmerking: ook in de specifieke realiteit van de onderzoeksgroep zal er hiervoor een RDBMS gebruikt worden. Twee redenen:
+		- De dataset is relatief klein
+		- De financiële situatie van de onderzoeksgroep laat niet toe al te dure investeringen te doen
 - MongoDB
 	- Bedoeling is ook om documents (aggregated content) op te slaan
-	- Opmerking: deze case is gekozen voor educatieve doeleinden. In de specifieke realiteit van het project is er voorlopig geen vraag naar
+	- Opmerking: deze case is gekozen voor educatieve doeleinden. In de specifieke realiteit van het project is er voorlopig geen vraag naar (alhoewel dit best in de toekomst wel het geval zou kunnen zijn)
 - Cloud Storage/DB (Optioneel)
-	- Mogelijk zal er een data transfer gedaan worden naar een Cloud Database zodat externe partners Reporting/Analytics/AI-tooling kunnen loslaten op de gegevens
+	- Mogelijk zal er een data transfer gedaan worden naar een Cloud Database zodat externe partners Reporting/Analytics/AI-tooling in de Cloud kunnen loslaten op de gegevens
 	- In eerste instantie gaat de voorkeur van het project uit naar Google Cloud Storage & BigQuery
 		- Azure zou een alternatief kunnen vormen
 - Vector Database (Optioneel)
 	- Zou documenten kunnen bevatten mbt. het protocol en de tooling
 	- Zou gekoppeld kunnen worden aan een LLM (lokaal of in de cloud) zodat eindgebruikers van ziekenhuizen en externe partners vragen kunnen stellen
+	- RAG & LLM (Retrieval-Augmented Generation)
 - MCP Servers (optioneel)
 	- Koppeling MCP server met datawarehouse
 	- TODO: uitzoeken mogelijkheden om bevragingen te doen via API in engelse/nederlandse taal
 - AI Agent systeem (optioneel)
 	- TO DO: dieper bekijken
-Opmerking: in het project draait alles op één host. In realiteit zal dit verdeeld worden over meerdere hosts/clusters.
+Opmerking: in het project draait alles op één host. In realiteit zal dit uiteraard verdeeld worden over meerdere hosts/clusters.
 ### Patronen
-Voor Datawarehousing zijn er een aantal patronen die steeds terugkomen (Leerboek Business Intelligence (Peter ter Braake - 2022))
-- Datawarehouse Architectuur
-	- Input bronnen (CRM, OLTP RDBMS,...)
-	- Staging Area (input bronnen worden (via ETL) overgezet naar de Staging Area)
-		- Dit bevat nog de 'ruwe data'
-	- Deze ruwe data wordt vervolgens 'opgeschoond'
-	- Vervolgens zal deze via het ETL proces worden opgeladen naar de Datawarehouse
-	- Aan het Datawarehouse zullen Data Marts gekoppeld worden
+Er zijn een aantal architecturale patronen die steeds terugkomen.
+#### Datawarehouse Architectuur
+- Input bronnen (CRM, OLTP RDBMS,...)
+- Staging Area (input bronnen worden (via ETL) overgezet naar de Staging Area)
+	- Dit bevat nog de 'ruwe data'
+	- Dit kan een Data Lake zijn
+- Deze ruwe data wordt vervolgens 'opgeschoond'
+- Vervolgens zal deze via het ETL proces worden opgeladen naar het Datawarehouse
+- Aan het Datawarehouse zullen Data Marts gekoppeld worden
+	- Data Marts is een deelverzameling van een Datawarehouse en is gericht op één specifieke afdeling of business domain
 	- Deze Data Marts zullen gebruikt worden door Data science tools, Frontend tools, Dashboards,...
+
+**Schematisch**
+
+![Data Engineering with Google Cloud Platform](documentation/Screenshot-Architectuur.png)
+
+(uit: Data Engineering with Google Cloud Platform - Adi Wijaya - 2024)
+
+- Er zijn verschillende manieren om data te modelleren in Datawarehouses.
 - Kimball vs Inmon vs Data-Vault
 	- Kimball
 		- Zal gebruik maken van gedenormaliseerde sterschema's
@@ -93,11 +118,32 @@ Voor Datawarehousing zijn er een aantal patronen die steeds terugkomen (Leerboek
 		- Mix tussen normalisatie en dimensioneel modeleren
 		- TODO: verder kort beschrijven
 
+#### Orchestration
+- Om het ETL proces uit te voeren wordt er gebruik gemaakt van een Orchestration tool. Deze tool zal pipelines opzetten die een aantal systemen met mekaar in verbinding zal brengen. Uit sommige van deze systemen zal data geëxtraheerd worden om deze vervolgens te cleanen, transformeren, enrichen,... en op te slaan in een ander systeem. Een klassiek voorbeeld is het extraheren van data uit een OLTP RDBMS en deze te transformeren naar een gedenormalizeerde vorm die dan in een OLAP Database opgeladen/gepersisteerd zal worden.
+
+**Schematisch**
+
+![Fundamentals of Data Engineering](documentation/Screenshot-Data-Engineering-Lifecycle.png)
+
+(uit: Fundamentals of Data Engineering - Joe Reis - 2022)
+
+- De tool die we gebruiken is Apache Airflow. Alternatieven zijn Prefect of Dagster.
+- Er is geopteerd voor Apache Airflow omdat deze technologie een proven status heeft en omdat deze ook de standaard technologie is achter Google Composer (de orchestration tool in het Google Cloud Platform)
+- De flow wordt gedefinieerd in DAGs waarbij een Scheduler de DAGs inlaadt en opstart. De logica gedefinieerd in de DAGs zal dan worden uitgevoerd door Workers
+- Verder biedt Apache Airflow een aantal mogelijkheden om de flows te monitoren en grafisch weer te geven
+
+**Schematisch**
+
+![Data Pipelines with Apache Airflow](documentation/Screenshot-Airflow.png)
+
+(uit: Data Pipelines with Apache Airflow - Julian de Ruiter - 2026)
+
 ## Technisch Ontwerp
 ### Staging Area
 - FTP Server opzet
 	- SQL/JSON-Files/... => Data Lake (Ruwe data, Batch, Streaming -> Bewerkte data) => Data Marts, Data Scientists => Rapportering
 	- Onderverdeling FTP (Folder structuur)
+	```
 		/Ruwe data 				/Bewerkte data
 			/Bron1					/Project1
 				/Tabel1					/Tabel1
@@ -105,8 +151,32 @@ Voor Datawarehousing zijn er een aantal patronen die steeds terugkomen (Leerboek
 			/Bron2					/Project2
 				/Tabel1					/Tabel1
 				/Tabel2					/Tabel2
+	```
 	- Enkel de sectie Bewerkte data wordt opengesteld voor anderen die dan deze data kunnen gebruiken
 	- Nota: voorzien we een mechanisme waar iedere file-upload wordt bewaard (met datum) voor debugging doeleinden (historiek)?
+
+### Orchestrator
+- Airflow zal het ETL proces aansturen dmv. het definiëren van flows via Directe Acyclic Graphs (DAGs)
+- Er wordt gebruik gemaakt van een aangepaste Docker container zodat er bepaalde Python libraries opgenomen zijn die in de DAG code gebruikt kunnen worden
+- TODO: verder uitschrijven
+
+### Datawarehouse
+- Er zal een klassieke RDBMS worden gebruikt die dienst zal doen als Datawarehouse
+- Consumers: Data Scientists
+- TODO: verder uitschrijven
+
+### Document Database
+- MongoDB zal fungeren als document store
+- Consumers: externe partners
+- TODO: verder uitschrijven
+
+### Google Cloud (BigQuery)
+- Deze database zal als Cloud Database fungeren
+- Consumers: externe partners
+- TODO: verder uitschrijven
+
+## Implementatie
+### FTP Server
 - FTP opzet duiding
 	- Passieve poorten zijn de poorten voor bestandsoverdracht
 	- curl zal een poort openen voor de data-overdracht en opent daarvoor een extra WILLEKEURIGE poort
@@ -120,7 +190,6 @@ Voor Datawarehousing zijn er een aantal patronen die steeds terugkomen (Leerboek
 		- curl -v --ftp-pasv -u airflow:airflow ftp://127.0.0.1/test.txt -o test.txt
 	- docker compose -f ftpserver.yml up -d
 ### Apache Airflow
-- Airflow zal het ETL proces aansturen dmv. het definiëren van flows via Directe Acyclic Graphs (DAGs)
 - Installatie via Docker Compose
 	- Installatie procedure: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html
 	- Maakt account aan
@@ -185,39 +254,39 @@ Voor Datawarehousing zijn er een aantal patronen die steeds terugkomen (Leerboek
 
 ## Journal
 ### Week 16 feb
-	- Opzet & Config lightweight ftp server (Docker)
-	- Testen FTP server via curl
-		- Uitzoeken gebruik curl mbt. ftp transmissies (oa. command vs passieve ports)
-	- Opzet Airflow (Docker Compose)
-		- Geen problemen tegengekomen met opzet
-	- Testen Airflow
-		- Web UI
-		- Command Line instructies specifiek aan Airflow
-	- Connection FTP server aanmaken in Airflow via UI en CLI
-	- Aanpassing opzet zodat PostgreSQL port exposed is en accessable is buiten container
-		- Educatieve/Development doeleinden, geen PRD instelling
-	- Aanmaak gezamenlijke docker networks
-	- Integratie VS Code voor coderen DAGs in IDE
-	- Opzet eenvoudige Test-DAG (op basis van internet resource)
-	- Opzet DAGs voor upload en download van data naar FTP server vanaf Airflow
-		- Problemen: configuratie heeft wel wat tijd in beslag genomen omdat bestanden en paden niet gevonden werden
-		- Oplossing: aanpassing in docker compose file inzake bind mount
-	- Aanmaak folderstructuur FTP server (inbound, outbound)
-	- Opzet GitHub repository
-		- Inchecken project
-	- Opzet basis directory structuur in FTP server en mount bind met host in apache airflow
-		- Aanpassing configuratie docker & aanpassing DAG
-		- Testen
-	- Refactoring: introductie annotations voor PythonOperator
-		- Nieuwere syntax is met decorators/annotations in de code
-	- Toevoegen test verwerking van gedownloade file
-	- Toevoegen extra PostgreSQL database instance die zal fungeren als een Datawarehouse + initialisatie script db voor aanmaak schema & test table
-	- Aanmaak custom Dockerbuild file + aanpassing Docker Compose voor opnemen PostgreSQL Python dependency in Apache Airflow
-	- Implementeren Python Task voor:
-		- Uitlezen van de (via FTP) gedownloade csv file via Pandas framework
-		- Introduceren gebruik Pandas: toevoegen van een (eevoudige) data cleaning
-		- Wegschrijven gegevens van DataFrame naar DWH database
-		- Integreren psycopg library voor PostgreSQL
+- Opzet & Config lightweight ftp server (Docker)
+- Testen FTP server via curl
+	- Uitzoeken gebruik curl mbt. ftp transmissies (oa. command vs passieve ports)
+- Opzet Airflow (Docker Compose)
+	- Geen problemen tegengekomen met opzet
+- Testen Airflow
+	- Web UI
+	- Command Line instructies specifiek aan Airflow
+- Connection FTP server aanmaken in Airflow via UI en CLI
+- Aanpassing opzet zodat PostgreSQL port exposed is en accessable is buiten container
+	- Educatieve/Development doeleinden, geen PRD instelling
+- Aanmaak gezamenlijke docker networks
+- Integratie VS Code voor coderen DAGs in IDE
+- Opzet eenvoudige Test-DAG (op basis van internet resource)
+- Opzet DAGs voor upload en download van data naar FTP server vanaf Airflow
+	- Problemen: configuratie heeft wel wat tijd in beslag genomen omdat bestanden en paden niet gevonden werden
+	- Oplossing: aanpassing in docker compose file inzake bind mount
+- Aanmaak folderstructuur FTP server (inbound, outbound)
+- Opzet GitHub repository
+	- Inchecken project
+- Opzet basis directory structuur in FTP server en mount bind met host in apache airflow
+	- Aanpassing configuratie docker & aanpassing DAG
+	- Testen
+- Refactoring: introductie annotations voor PythonOperator
+	- Nieuwere syntax is met decorators/annotations in de code
+- Toevoegen test verwerking van gedownloade file
+- Toevoegen extra PostgreSQL database instance die zal fungeren als een Datawarehouse + initialisatie script db voor aanmaak schema & test table
+- Aanmaak custom Dockerbuild file + aanpassing Docker Compose voor opnemen PostgreSQL Python dependency in Apache Airflow
+- Implementeren Python Task voor:
+	- Uitlezen van de (via FTP) gedownloade csv file via Pandas framework
+	- Introduceren gebruik Pandas: toevoegen van een (eevoudige) data cleaning
+	- Wegschrijven gegevens van DataFrame naar DWH database
+	- Integreren psycopg library voor PostgreSQL
 ### Week 23 feb
 - Opzet MongoDB
 	- Schrijven docker compose file
@@ -247,14 +316,26 @@ Voor Datawarehousing zijn er een aantal patronen die steeds terugkomen (Leerboek
 				- De eerste resultaten zijn teleurstellend. Ik dien verder uit te zoeken waarom dit zo is. Eén van de factoren is wellicht mijn gebrek aan kennis omtrent MCP/inzet LLMs/... Een andere mogelijkheid is dat het model dat ik lokaal draai misschien niet krachtig genoeg is
 				- De code is afkomstig uit online resources en verbetert adh van AI
 				- Op moment van schrijven is de code niet volledig duidelijk voor mij zodus ik dien verder studiewerk hieromtrent uit te voeren
+### Week 1 maart
+- Uitbreiden en herwerken technsiche documentatie
+- Studie Google BigQuery
+	- Diagonaal/Partieel doornemen Data Engineering with Google Cloud Platform
+	- Doornemen artikels
+	- Uittesten UI Google Cloud
 
 ## Algemene Resources
+### Boeken
 - Leerboek Business Intelligence (Peter ter Braake - 2022)
 	- Status: gelezen
 - Fundamentals of Data Engineering (Joe Reis, Matt Housley - 2022)
 	- Status: grotendeels gelezen
 - Data Pipelines with Apache Airflow (Bas P. Harenslak and Julian Rutger de Ruiter - 2021)
 	- Status: aan het doornemen
+- Data Engineering with Google Cloud Platform (Adi Wijaya - 2024)
+	- Status: aan het doornemen
+- Pandas in Action (Boris Paskhaver - 2021)
+	- Status: aan het lezen
+### Internet Resources
 - Apache Iceberg Explained: A Complete Guide for Beginners
 	- https://www.datacamp.com/tutorial/apache-iceberg?utm_cid=23552157103&utm_aid=188237542770&utm_campaign=230119_1-ps-other~dsa-tofu~data-eng_2-b2c_3-emea_4-prc_5-na_6-na_7-le_8-pdsh-go_9-nb-e_10-na_11-na&utm_loc=9196930-&utm_mtd=-c&utm_kw=&utm_source=google&utm_medium=paid_search&utm_content=ps-other~emea-en~dsa~tofu~tutorial~data-engineering&gad_source=1&gad_campaignid=23552157103&gclid=CjwKCAiAncvMBhBEEiwA9GU_ftMq3AigSW9lUmyxzDBq4enHnF6yBd7A88gZ1fSQ5VFmxz5HPBJTshoCIYQQAvD_BwE
 	- Status: diagonaal doorlopen. To Do: dieper doornemen
@@ -262,5 +343,3 @@ Voor Datawarehousing zijn er een aantal patronen die steeds terugkomen (Leerboek
 	- https://airflow.apache.org/docs/apache-airflow/stable
 - Pandas documentation
 	- https://pandas.pydata.org/docs/
-- Pandas in Action (Boris Paskhaver - 2021)
-	- Status: aan het lezen
