@@ -4,5 +4,6 @@ USER airflow
 
 RUN pip install psycopg[binary]
 RUN pip install pymongo
+RUN pip install google-cloud-BigQuery
 
 USER airflow

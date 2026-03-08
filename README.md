@@ -20,7 +20,7 @@
 	- FTP Server
 	- Apache Airflow
 - Journal
-- Algemene Resources
+- Geraadpleegde bronnen
 
 ## Inleidend
 Dit is een 'Work In Progress'-document en zal aan veranderingen onderhevig zijn. Bedoeling van dit document is om een high-level overzicht te geven van de technische opzet van het project. Tevens zullen er secties opgenomen worden waarin de progressie van het project beschreven wordt (zie sectie Journal). Dit zal twee aspecten bevatten, enerzijds de activiteiten inzake de geïmplementeerde code & configuratie met wat technische duiding, anderzijds het verloop van de opzet. Het laatste aspect dient inzicht te geven in de aanpak, welke concepten tegengekomen zijn, wat de moeilijkere aspecten waren en tenslotte bronverwijzingen.
@@ -48,6 +48,12 @@ De **vereenvoudigde** opzet zal bestaan uit een aantal componenten die via Docke
 		- Output bestanden die het resultaat zijn van bepaalde verwerkingen (Reverse ETL)
 	- Dit is erg relatief en men zou dit kunnen zien als een '(very) poor man's Datalake'
 	- Een alternatief hiervoor zou het gebruik zijn van Apache Iceberg of Google dataproc op het Google Cloud Platform
+	- Nadelen FTP Server 'als datalake':
+		- Weinig ondersteuning voor data governance
+		- Geen fine-grained security
+		- Geen opslag van meta-data (geen data-lineage...)
+		- Geen mogelijkheid om queries uit te voeren om objecten/files op te zoeken
+	- FTP Server gebruiken als datalake kan dan ook al snel leiden tot een data swamp
 - Apache Airflow
 	- Orchestrator die het ELT proces voor zijn rekening neemt
 	- Zal bestanden ophalen van de FTP Server
@@ -71,17 +77,17 @@ De **vereenvoudigde** opzet zal bestaan uit een aantal componenten die via Docke
 - MongoDB
 	- Bedoeling is ook om documents (aggregated content) op te slaan
 	- Opmerking: deze case is gekozen voor educatieve doeleinden. In de specifieke realiteit van het project is er voorlopig geen vraag naar (alhoewel dit best in de toekomst wel het geval zou kunnen zijn)
-- Cloud Storage/DB (Optioneel)
-	- Mogelijk zal er een data transfer gedaan worden naar een Cloud Database zodat externe partners Reporting/Analytics/AI-tooling in de Cloud kunnen loslaten op de gegevens
+- Cloud Storage/DB
+	- Er zal een data transfer gedaan worden naar een Cloud Database zodat externe partners Reporting/Analytics/AI-tooling in de Cloud kunnen loslaten op de gegevens
 	- In eerste instantie gaat de voorkeur van het project uit naar Google Cloud Storage & BigQuery
 		- Azure zou een alternatief kunnen vormen
+- MCP Servers (optioneel)
+	- Koppeling MCP server met datawarehouse
+	- TODO: zit in experimentele fase
 - Vector Database (Optioneel)
 	- Zou documenten kunnen bevatten mbt. het protocol en de tooling
 	- Zou gekoppeld kunnen worden aan een LLM (lokaal of in de cloud) zodat eindgebruikers van ziekenhuizen en externe partners vragen kunnen stellen
 	- RAG & LLM (Retrieval-Augmented Generation)
-- MCP Servers (optioneel)
-	- Koppeling MCP server met datawarehouse
-	- TODO: uitzoeken mogelijkheden om bevragingen te doen via API in engelse/nederlandse taal
 - AI Agent systeem (optioneel)
 	- TO DO: dieper bekijken
 Opmerking: in het project draait alles op één host. In realiteit zal dit uiteraard verdeeld worden over meerdere hosts/clusters.
@@ -251,6 +257,27 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 		- https://docs.vultr.com/python/third-party/pandas/DataFrame/to_json
 	- Basis data manipulatie MongoDB & Python
 		- https://www.geeksforgeeks.org/mongodb/mongodb-python-insert-update-data/
+### Google BigQuery
+- Opzet project in Google Cloud workspace
+- Opzet Service Account voor tools die via API Google Cloud willen aanspreken
+	- Service account jkeustermans aangemaakt als BigQuery Admin. Procdure:
+		- Log aan in Google Cloud Dashboard
+		- Ga naar IAM and services
+		- Create Service Account
+		- Vul basisvelden in
+		- Maak een nieuwe key aan
+		- Key verschijnt in de lijst
+		- Ga naar de details van nieuwe key
+		- Daarna naar Keys tabblad gaan
+		- Add key > Create new key
+		- Kies JSON
+		- Er wordt automatisch een key gedownload naar je lokale schijf
+	- Resource: https://blog.dataengineerthings.org/setting-up-a-google-cloud-service-account-with-json-key-for-authentication-d673e10ea8e7
+- Dependency opnemen in Airflow voor aanspreken API Google Cloud
+	- pip install google-cloud-BigQuery
+	- Maak een nieuwe image aan voor Apache Airflow
+- Implementatie code in Airflow
+	- Resource: https://blog.coupler.io/how-to-crud-bigquery-with-python/
 
 ## Journal
 ### Week 16 feb
@@ -317,13 +344,51 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 				- De code is afkomstig uit online resources en verbetert adh van AI
 				- Op moment van schrijven is de code niet volledig duidelijk voor mij zodus ik dien verder studiewerk hieromtrent uit te voeren
 ### Week 1 maart
-- Uitbreiden en herwerken technsiche documentatie
+- Uitbreiden en herwerken technische documentatie
 - Studie Google BigQuery
 	- Diagonaal/Partieel doornemen Data Engineering with Google Cloud Platform
 	- Doornemen artikels
 	- Uittesten UI Google Cloud
+- Doornemen artikels voor meer duiding huidig data-engineering landschap (zie ook sectie Geraadpleegde bronnen)
+	- What is a Data Lake? Definition, Architecture, and Use Cases
+	- Apache Iceberg Explained: A Complete Guide for Beginners
+	- Object Storage as Primary Storage: The MinIO Story
+	- MinIO Docker: Setup guide for S3-Compatible Object Storage
+- Implementatie basisscenario voor integratie BigQuery in Airflow workflow
+	- Doornemen resources ivm. opzet:
+		- Artikel opzet IAM account & key export
+		- Artikel integratie Python en BigQuery
+	- Opzetten Google Services Account (IAM)
+	- Export key file + opzet configuratie in Airflow
+	- Secure configuratie Google credentials in .env file + .gitignore
+	- Aanpassen Docker build file voor opnamen Python dependency google-bigquery
+	- Aanmaak nieuwe Dataset & Tabel in BigQuery
+	- Schrijven basis code voor insert data in Google BigQuery + testen Python code lokaal
+		- Impediment: omzeilen probleem billing account (oplossing: batch oplossing ipv. streaming)
+	- Opname code in Airflow Task + testen opzet in Airflow
+		- Impediment: probleem locatie key file
+	- Uitbreiden tecnische documentatie ivm. Google BigQuery
+- Eerste aanzet OLAP model (Kimball methode)
+	- Uitdenken OLAP Use Cases voor Global-PPS project
+	- Doornemen basis artikels Kimball opzet
+	- Uittekenen initiële opzet
+	- Iteratief met LLM's verschillende opzetmogelijkheden doornemen
+	- Overleg Domein Expert
+- Experimenteel
+	- Experimenteren met opzet van MindsDB
+		- Docker compose file schrijven
+		- Doornemen basisdocumentatie
+		- Uitzoeken basisopzet
+		- Opzet test database structuur
+		- Opzet integratie met database
+		- Opzet Agent structuur
+		- Testen opzet
+		- Impediment: 
+			- Rate Limits van Gemini LLM
+		-Bedoeling: integratie van LLM met Database zodat Domein Gebruikers een database zouden kunnen ondervragen via Engelse taal ipv. SQL Statements
+		- Status: in progress
 
-## Algemene Resources
+## Geraadpleegde bronnen
 ### Boeken
 - Leerboek Business Intelligence (Peter ter Braake - 2022)
 	- Status: gelezen
@@ -334,11 +399,20 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 - Data Engineering with Google Cloud Platform (Adi Wijaya - 2024)
 	- Status: aan het doornemen
 - Pandas in Action (Boris Paskhaver - 2021)
-	- Status: aan het lezen
-### Internet Resources
+	- Status: grotendeels gelezen
+### Internet Resources (hoofdartikels)
+- What is a Data Lake? Definition, Architecture, and Use Cases
+	- https://www.datacamp.com/blog/what-is-a-data-lake
+	- Status: gelezen
 - Apache Iceberg Explained: A Complete Guide for Beginners
 	- https://www.datacamp.com/tutorial/apache-iceberg?utm_cid=23552157103&utm_aid=188237542770&utm_campaign=230119_1-ps-other~dsa-tofu~data-eng_2-b2c_3-emea_4-prc_5-na_6-na_7-le_8-pdsh-go_9-nb-e_10-na_11-na&utm_loc=9196930-&utm_mtd=-c&utm_kw=&utm_source=google&utm_medium=paid_search&utm_content=ps-other~emea-en~dsa~tofu~tutorial~data-engineering&gad_source=1&gad_campaignid=23552157103&gclid=CjwKCAiAncvMBhBEEiwA9GU_ftMq3AigSW9lUmyxzDBq4enHnF6yBd7A88gZ1fSQ5VFmxz5HPBJTshoCIYQQAvD_BwE
-	- Status: diagonaal doorlopen. To Do: dieper doornemen
+	- Status: gelezen
+- MinIO Docker: Setup guide for S3-Compatible Object Storage
+	- https://www.datacamp.com/tutorial/minio-docker
+	- Status: gelezen
+- Object Storage as Primary Storage: The MinIO Story
+	- https://dev.to/ashokan/object-storage-as-primary-storage-the-minio-story-3g39
+	- Status: gelezen
 - Apache Airflow
 	- https://airflow.apache.org/docs/apache-airflow/stable
 - Pandas documentation
