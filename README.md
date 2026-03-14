@@ -343,7 +343,7 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 				- De eerste resultaten zijn teleurstellend. Ik dien verder uit te zoeken waarom dit zo is. Eén van de factoren is wellicht mijn gebrek aan kennis omtrent MCP/inzet LLMs/... Een andere mogelijkheid is dat het model dat ik lokaal draai misschien niet krachtig genoeg is
 				- De code is afkomstig uit online resources en verbetert adh van AI
 				- Op moment van schrijven is de code niet volledig duidelijk voor mij zodus ik dien verder studiewerk hieromtrent uit te voeren
-### Week 1 maart
+### Week 2 maart
 - Uitbreiden en herwerken technische documentatie
 - Studie Google BigQuery
 	- Diagonaal/Partieel doornemen Data Engineering with Google Cloud Platform
@@ -387,6 +387,22 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 			- Rate Limits van Gemini LLM
 		-Bedoeling: integratie van LLM met Database zodat Domein Gebruikers een database zouden kunnen ondervragen via Engelse taal ipv. SQL Statements
 		- Status: in progress
+### Week 9 maart
+- Doornemen slides lessen Data Engineering
+- Studie LangGraph
+	- Partieel doornemen Intro to LangGraph videoreeks
+		- LangChain Academy: Foundation: Introduction to LangGraph - Python  (zie geraadpleegde bronnen)
+- Studie Vector Databases
+	- Artikel: What is a Vector Database & How Does it Work? Use Cases + Examples  (zie geraadpleegde bronnen)
+- Vibe coding
+	- Registreren Claude Pro
+	- Experimenteren Code Generatie
+		- Generatie prototype Chatbot (RAG & Vector database + REST API)
+		- Aanpassen code & bugfixing
+-Initiële data exfiltratie OLTP
+	- Schrijven queries voor ophalen data uit het OLTP systeem
+	- Filtering en initiële transformatie van de data
+	- Anonymisering
 
 ## Geraadpleegde bronnen
 ### Boeken
@@ -413,6 +429,11 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 - Object Storage as Primary Storage: The MinIO Story
 	- https://dev.to/ashokan/object-storage-as-primary-storage-the-minio-story-3g39
 	- Status: gelezen
+- What is a Vector Database & How Does it Work? Use Cases + Examples
+	- https://www.pinecone.io/learn/vector-database/
+	- Status: gelezen
+- LangChain Academy: Foundation: Introduction to LangGraph - Python
+	- https://academy.langchain.com/courses/intro-to-langgraph
 - Apache Airflow
 	- https://airflow.apache.org/docs/apache-airflow/stable
 - Pandas documentation

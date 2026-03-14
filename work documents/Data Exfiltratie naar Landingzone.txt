@@ -1,0 +1,62 @@
+-- Selectie/ruwe transformatie van data uit OLTP systeem bestemd voor Landingzone
+--   -Laatste 2 jaar (vanaf inquiry-id 30) 
+--   -Enkel outpatients
+
+-- Datasource 1: Institution Survey
+select id, id_inquiry, id_institution
+from institution_surveys t 
+where t.id_inquiry in (30, 31, 32, 33, 34, 35, 36, 37)
+  and t.outpatients_included = 1;
+
+-- Datasource 2: Outpatient Registrations (geanonymiseerd)
+select i.id institution_id, SUBSTRING(MD5(i.name) FROM 1 FOR 8) as institution_name, cnt.iso as country_code, t.code as institution_subtype_code
+from institutions i
+join nuts_level3 n3 on i.nuts_level3_code = n3.code
+join nuts_level2 n2 on n2.code = n3.nuts_level2_code
+join nuts_level1 n1 on n1.code = n2.nuts_level1_code
+join countries cnt on n1.country_code = cnt.iso
+join institution_subtypes t on t.id = i.institution_subtype
+where i.id in (
+	select t.id_institution  
+	from institution_surveys t 
+	where t.id_inquiry in (30, 31, 32, 33, 34, 35, 36, 37)
+	  and t.outpatients_included = 1
+);
+
+-- Datasource 3: Outpatient Treatments
+select oreg.age_group, oreg.gender, GROUP_CONCAT(ors.code)
+from outpatient_registrations oreg
+join unit_registrations ur on oreg.unit_registration_guid = ur.guid
+join institution_surveys t on ur.institution_survey_id = t.id
+join outpatient_registrations_symptoms ors on ors.outpatient_registration_guid  = oreg.guid
+where t.id in (
+	select t.id
+	from institution_surveys t 
+	where t.id_inquiry in (30, 31, 32, 33, 34, 35, 36, 37)
+	  and t.outpatients_included = 1
+)
+group by oreg.guid;
+
+select 
+	ot.guid as treatment_id,
+	ot.outpatient_registration_guid as outpatient_id, 
+	a.atc5 as atc5_code, 
+	ot.prescription_type as prescription_type, 
+	ot.single_unit_dose as single_unit_dose,
+	ot.dose_unit as dose_unit,
+	ot.daily_doses as daily_doses,
+	ot.therapy_intended_duration_known  as therapy_intended_duration_known,
+	ot.therapy_intended_duration as therapy_intended_duration,
+	d.code as diagnosis_code,
+	i.code as indication_code,
+	ot.reason_in_notes as reason_in_notes,
+	ot.local_guideline_exists as local_guideline_exists,
+	ot.drug_according_to_guideline as drug_according_to_guideline,
+	ot.dose_according_to_guideline as dose_according_to_guideline,
+	ot.duration_according_to_guideline as duration_according_to_guideline,
+	ot.roa_according_to_guideline as roa_according_to_guideline
+from outpatient_treatments ot 
+join outpatient_registrations oreg on oreg.guid = ot.outpatient_registration_guid 
+join antimicrobials a on a.id = ot.antimicrobial_id 
+join diagnosis d on d.id = ot.diagnosis_id 
+join indications i on i.id = ot.indication_id;
