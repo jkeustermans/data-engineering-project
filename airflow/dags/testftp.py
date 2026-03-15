@@ -5,13 +5,14 @@ from airflow.sdk import dag, task
 from pathlib import Path
 import pandas as pd
 import numpy as np
-import psycopg as pgs
 from sqlalchemy import create_engine
+import sqlalchemy as db
 from pymongo import MongoClient
 import json
 from google.cloud import bigquery
 from google.cloud.bigquery import Table
 import os
+import psycopg as psy
 
 default_args = {
     "retries": 1,
@@ -53,14 +54,30 @@ def Test_Ftp():
         # FILE_LOCAL_RUN = "/home/jkeustermans/JOpleiding/Data-Engineering/Project/airflow/data/raw_data.csv"
         df_csv = pd.read_csv(FILE_AIRFLOW_BASED, dtype={"id": str, "naam": str, "salaris": np.int32})    # Laad downloaded file op Host
         df_csv.loc[df_csv['salaris'] < 1500, 'salaris'] = 1500      # Data cleaning: ken een minimum salaris toe
-        write_csv_content_to_dwh(df_csv)
-        write_csv_content_to_mongodb(df_csv)
+        write_csv_content_to_dwh_using_pandas(df_csv)
+        write_test_data_to_dwh_using_psycopg(df_csv)
+        write_test_data_to_dwh_using_sqlalchemy(df_csv)
+        write_csv_content_to_mongodb_using_pandas(df_csv)
 
-    def write_csv_content_to_dwh(df_csv):
+    def write_test_data_to_dwh_using_psycopg(df_csv):
+        with psy.connect(host="dwh", port=5432, dbname="dwh", user="dwh", password="dwh") as conn:
+            with conn.transaction():
+                conn.execute("INSERT INTO test (id, naam, salaris) values(%s, %s, %s)", ('0', 'Jimmy Psycopg', '9999'),)
+    
+    def write_test_data_to_dwh_using_sqlalchemy(df_csv):
+        with db.create_engine("postgresql+psycopg://dwh:dwh@dwh:5432/dwh").connect() as conn:
+            conn.begin()                                                   # Start Transactie
+            metadata = db.MetaData()                                       # Extractie van metadata
+            table_test = db.Table('test', metadata, autoload_with=conn)    # Table object
+            insert_statement = db.insert(table_test).values(id=0, naam="Jimmy SQLAlchemy", salaris="8888")
+            conn.execute(insert_statement)
+            conn.commit()                                                  # Commit Transactie
+    
+    def write_csv_content_to_dwh_using_pandas(df_csv):
         engine = create_engine("postgresql+psycopg://dwh:dwh@dwh:5432/dwh")
         df_csv.to_sql("test", con=engine, if_exists="append", index=False)
     
-    def write_csv_content_to_mongodb(df_csv):
+    def write_csv_content_to_mongodb_using_pandas(df_csv):
         CONNECTION_STRING = "mongodb://test:test@mongodb:27017"
         with MongoClient(CONNECTION_STRING) as client:
             db = client["test"]

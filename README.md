@@ -390,19 +390,30 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 ### Week 9 maart
 - Doornemen slides lessen Data Engineering
 - Studie LangGraph
-	- Partieel doornemen Intro to LangGraph videoreeks
+	- Partieel doornemen Intro to LangGraph videoreeks (Part 1)
 		- LangChain Academy: Foundation: Introduction to LangGraph - Python  (zie geraadpleegde bronnen)
 - Studie Vector Databases
 	- Artikel: What is a Vector Database & How Does it Work? Use Cases + Examples  (zie geraadpleegde bronnen)
-- Vibe coding
+- Vibe coding/code generatie
 	- Registreren Claude Pro
-	- Experimenteren Code Generatie
+	- Experimenteren Code Generatie via chat (voorlopig nog niet via Claude Code)
+		- Claude.MD files laten genereren op basis van requirements
 		- Generatie prototype Chatbot (RAG & Vector database + REST API)
 		- Aanpassen code & bugfixing
+		- Import van PDF
+		- Klein aantal exploratieve testen 
 -Initiële data exfiltratie OLTP
 	- Schrijven queries voor ophalen data uit het OLTP systeem
 	- Filtering en initiële transformatie van de data
 	- Anonymisering
+- Implementatie testcode voor database manipulaties in DAG
+	- Libraries:
+		- psycopg
+		- sql-alchemy
+	- Opmerking: de eerdere inserts gebeurde via gebruik van het Pandas framework
+	- Reden: educatief (vetrouwd geraken met basisgebruik van psycopg en sql-alchemy)
+- Doornemen resources ivm psycopg en sqlalchemy
+	- Zie Psycopg documentation en SQLAlchemy Tutorial With Examples
 
 ## Geraadpleegde bronnen
 ### Boeken
@@ -434,6 +445,16 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 	- Status: gelezen
 - LangChain Academy: Foundation: Introduction to LangGraph - Python
 	- https://academy.langchain.com/courses/intro-to-langgraph
+	- Status: partieel doorgenomen (25%)
+- Psycopg documentation
+	- Basic Module Usage: https://www.psycopg.org/psycopg3/docs/basic/usage.html#
+	- Passing Parameters to SQL Queries: https://www.psycopg.org/psycopg3/docs/basic/params.html
+	- Template String Queries: https://www.psycopg.org/psycopg3/docs/basic/tstrings.html
+	- Transaction Management: https://www.psycopg.org/psycopg3/docs/basic/transactions.html
+	- Status: gelezen
+- SQLAlchemy Tutorial With Examples
+	- https://www.datacamp.com/tutorial/sqlalchemy-tutorial-examples
+	- Status: gelezen
 - Apache Airflow
 	- https://airflow.apache.org/docs/apache-airflow/stable
 - Pandas documentation
