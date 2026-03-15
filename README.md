@@ -402,7 +402,7 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 		- Aanpassen code & bugfixing
 		- Import van PDF
 		- Klein aantal exploratieve testen 
--Initiële data exfiltratie OLTP
+- Initiële data exfiltratie OLTP
 	- Schrijven queries voor ophalen data uit het OLTP systeem
 	- Filtering en initiële transformatie van de data
 	- Anonymisering
