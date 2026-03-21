@@ -181,6 +181,70 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 - Consumers: externe partners
 - TODO: verder uitschrijven
 
+## Data Model
+### Landingzone
+#### Structuur datamodel
+Zoals eerder gesteld zal de landingzone een aantal CSV files bevatten die de data omspannen. Deze data is uit de OLTP database getrokken. De files volgen een bepaalde structuur die niet persé relationeel genormaliseerd is maar die een structuur zouden kunnen bevatten zoals datasets die aangeboden worden op het internet. De structuur is dus eerder bedoeld om in een educatief project te fungeren. Bedoeling is dat deze structuur getransformeerd zal worden (zie eerder).
+Schema van het datamodel:
+
+![Datamodel landingzone](documentation/Datamodel-Landingzone.png)
+
+#### Verklaring datamodel
+Hieronder staat een oplijsting van de aanwezige datasets met een high-level verklaring:
+- Institutions
+	- Bevat de hospitalen die deel hebben genomen aan bepaalde surveys. In dit geval gaat het om Outpatient Surveys. In deze tabel wordt een kleine dataset aan gegevens bijgehouden.
+	- Duiding Kolommen:
+		- Country-Code: in welk land is het instituut gevestigd
+		- Sub-Region-Code: in welke subregio in de wereld is het hospitaal gevestigd
+		- Subtype-Code: wat voor soort hospitaal is het (primair, secundair...)
+- Surveys
+	- Een hospitaal dat meedoet aan een Point-Prevalence-Survey zal een protocol volgen om op bepaalde tijdstippen (survey-date) de patiënten te monitoren en alle gegevens mbt. deze patiënt en zijn behandeling te registreren. Bedoeling is dat er een strikt protocol gevolgd wordt voor de data te verzamelen voor elke patiënt op de betreffende survey-date. Aan een Survey zullen dus onderzoekgegevens gekoppeld worden.
+	- Duiding kolommen:
+		- Inquiry-Id: per jaar worden er een aantal inquiries uitgeschreven. Dit zijn periodes waarin er surveys kunnen gebeuren
+		- Institution-Id: de ID van het institution waarop de survey betrekking heeft
+- Unit-Registrations
+	- Er gebeuren registraties op bepaalde departementen van een hospitaal/medical care facility = Units. Patiënten waarvoor men registraties gaat doen zullen binnen een bepaalde Unit behandeld worden. Van deze Unit worden ook een aantal gegevens bijgehouden
+	- Duiding kolommen:
+		- Survey-ID: met welke survey is deze Unit-Registration gekoppeld
+		- Survey-Date: datum waarop de survey gebeurd binnen deze unit
+		- Medical Specialty Type: wat is de specialiteit van deze Unit (vb. Neurologie)
+		- Nbr-of-doctors: aantal doctors gelieerd aan deze unit
+		- Nbr-of-Pharmacists: aantal pharmaceuten gelieerd aan deze unit
+- Outpatient-Registrations
+	- Tijdens een survey worden gegevens genoteerd van de patiënten die gesurveyeerd worden.
+	- Duiding kolommen
+		- Unit-registration-ID: aan welke Unit is de patiënt gekoppeld
+		- Age-group: wat is de leeftijdscategorie van de patiënt (neonaat, kind, volwassene)
+		- Gender: gender van de patiënt
+		- Weight: gewicht
+		- Birth-Weight: gewicht van een neonaat
+		- Symptom-codes: codes voor symptomen dat de patiënt vertoond (1 of meerdere gescheiden van mekaar door een pipe)
+- Outpatient-Treatments
+	- Er gebeuren 2 soorten registraties:
+		- Algemene registraties: er wordt geen bijkomende data genoteerd (enkel een aantal basis patiënt gegevens). Dit soort registratie wordt gedaan als er geen antimicrobial wordt voorgeschreven. Deze patiënt wordt wel geregistreerd oa. omwille van het feit dat we willen weten hoeveel patiënten er in totaal zijn gesurveyeerd tov. het aantal patiënten dat een antimicrobial heeft gekregen
+		- Detail registratie: hier worden extra gegevens genoteerd, oa. de treatment gegevens. Deze patiënten hebben wel een antimicrobial voorgeschreven gekregen. Merk op dat er meerdere antimicrobials voorgeschreven kunnen worden. Voor elk antimicrobial dat voorgeschreven wordt zal er een Treatment worden geregistreerd
+	- Duiding kolommen:
+		- Outpatient-Id: aan welke patiënt is de behandeling gelieerd
+		- ACT5-Code: de code die het antimicrobial (antibioticum, antiviraal, antifungal) weerspiegelt (classificatie)
+		- Prescription-type: soort voorschrift (opstart van behandeling, een voorschrift voor een lopende behandeling,...)
+		- Single Unit Dose: dosering van een unit (vb. 1 pilletje)
+		- Dose Unit: eenheid (mg, gram, microliter,...)
+		- Daily Doses: aantal dosissen per dag
+		- Therapy Intended Duration Known: is de duur van de behandeling gekend
+		- Therapy Duration: duur van de behandeling
+		- Diagnosis-Code: code van de gestelde diagnose (apart classificatiesysteem specifiek aan het project)
+		- Indication-Code: waar heeft de patiênt de infectie opgedaan (thuis, in het ziekenhuis,...)
+		- Reason in notes: staat de rede voor het toedienen van het antimicrobial in het dossier van de patiënt
+		- Reference Guideline Exists: is er een richtlijn aanwezig voor het gebruik van het verstrekte antimicrobial
+		- Drug According To Guideline: is het toegediende antimicrobial effectief volgens de richtlijn voor het gebruik ervan
+		- Dose According to Guideline: stemt de dosis die gegeven is overeen met de richtlijn
+		- Duration According to Guideline: stemt de duur van de behandeling overeen met de richtlijn
+		- ROA According to Guideline: is de manier van toedienen (oraal, parenteraal,...) volgens de richtlijn
+- Countries (ondersteuningstabel)
+	- Bevat code en naam van landen (institution refereert hiernaar)
+- Subregions (ondersteuningstabel)
+	- Bevat code en naam van de region (institution refereert hiernaar)
+
 ## Implementatie
 ### FTP Server
 - FTP opzet duiding
@@ -414,6 +478,17 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 	- Reden: educatief (vetrouwd geraken met basisgebruik van psycopg en sql-alchemy)
 - Doornemen resources ivm psycopg en sqlalchemy
 	- Zie Psycopg documentation en SQLAlchemy Tutorial With Examples
+
+### Week 16 maart
+- Export gegevens uit OLTP systeem
+	- Aanvulen aanpassingen queries
+	- Overzetten data
+	- Aanmaken schema diagram voor model
+	- Documenteren
+- OLAP structuur
+	- OLAP structuur verder modelleren
+		- Verder uitwerken tabellen
+		- Consulteren AI voor controle uitwerking
 
 ## Geraadpleegde bronnen
 ### Boeken
