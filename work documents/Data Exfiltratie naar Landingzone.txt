@@ -8,13 +8,14 @@ from institution_surveys t
 where t.id_inquiry in (30, 31, 32, 33, 34, 35, 36, 37)
   and t.outpatients_included = 1;
 
--- Datasource 2: Outpatient Registrations (geanonymiseerd)
-select i.id institution_id, SUBSTRING(MD5(i.name) FROM 1 FOR 8) as institution_name, cnt.iso as country_code, t.code as institution_subtype_code
+-- Datasource 2: Institutions (geanonymiseerd)
+select i.id institution_id, SUBSTRING(MD5(i.name) FROM 1 FOR 8) as institution_name, cnt.iso as country_code, cont.sub_region_code as sub_region_code, t.code as institution_subtype_code
 from institutions i
 join nuts_level3 n3 on i.nuts_level3_code = n3.code
 join nuts_level2 n2 on n2.code = n3.nuts_level2_code
 join nuts_level1 n1 on n1.code = n2.nuts_level1_code
 join countries cnt on n1.country_code = cnt.iso
+join continents cont on cont.iso2 = cnt.iso
 join institution_subtypes t on t.id = i.institution_subtype
 where i.id in (
 	select t.id_institution  
@@ -23,8 +24,8 @@ where i.id in (
 	  and t.outpatients_included = 1
 );
 
--- Datasource 3: Outpatient Treatments
-select oreg.age_group, oreg.gender, GROUP_CONCAT(ors.code)
+-- Datasource 3: Outpatient Registrations
+select oreg.guid as id, oreg.unit_registration_guid as unit_registration_id, oreg.age_group, oreg.gender, oreg.weight, oreg.birth_weight, GROUP_CONCAT(ors.code) as symptom_codes
 from outpatient_registrations oreg
 join unit_registrations ur on oreg.unit_registration_guid = ur.guid
 join institution_surveys t on ur.institution_survey_id = t.id
@@ -37,8 +38,9 @@ where t.id in (
 )
 group by oreg.guid;
 
+-- Datasource 4: Outpatient Treatments
 select 
-	ot.guid as treatment_id,
+	ot.guid as id,
 	ot.outpatient_registration_guid as outpatient_id, 
 	a.atc5 as atc5_code, 
 	ot.prescription_type as prescription_type, 
@@ -50,7 +52,7 @@ select
 	d.code as diagnosis_code,
 	i.code as indication_code,
 	ot.reason_in_notes as reason_in_notes,
-	ot.local_guideline_exists as local_guideline_exists,
+	ot.reference_guideline_exists as reference_guideline_exists,
 	ot.drug_according_to_guideline as drug_according_to_guideline,
 	ot.dose_according_to_guideline as dose_according_to_guideline,
 	ot.duration_according_to_guideline as duration_according_to_guideline,
@@ -59,4 +61,32 @@ from outpatient_treatments ot
 join outpatient_registrations oreg on oreg.guid = ot.outpatient_registration_guid 
 join antimicrobials a on a.id = ot.antimicrobial_id 
 join diagnosis d on d.id = ot.diagnosis_id 
-join indications i on i.id = ot.indication_id;
+join indications i on i.id = ot.indication_id
+join unit_registrations ur on oreg.unit_registration_guid = ur.guid
+join institution_surveys t on ur.institution_survey_id = t.id
+where t.id in (
+	select t.id
+	from institution_surveys t 
+	where t.id_inquiry in (30, 31, 32, 33, 34, 35, 36, 37)
+	  and t.outpatients_included = 1
+);
+
+-- Datasource 5: Unit Registrations
+select ur.guid as id, ur.institution_survey_id as survey_id, ur.survey_date, ur.medical_specialty_type, ur.nbr_of_doctors, ur.nbr_of_pharmacists 
+from unit_registrations ur 
+join institution_surveys t on ur.institution_survey_id = t.id
+where t.id in (
+	select t.id
+	from institution_surveys t 
+	where t.id_inquiry in (30, 31, 32, 33, 34, 35, 36, 37)
+	  and t.outpatients_included = 1
+);
+
+-- Datasource 5: sub-regions
+select distinct(sub_region_code), sub_region_name 
+from continents 
+where sub_region_code is not null;
+
+-- Datasource 6: countries
+select distinct(iso), name
+from countries;
