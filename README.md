@@ -495,6 +495,22 @@ TODO: beschrijving analyse
 	- OLAP structuur verder modelleren
 		- Verder uitwerken tabellen
 		- Consulteren AI voor controle uitwerking
+		- Aanmaken schema diagram voor model
+- Data Processing
+	- Implementatie initiële basiscode voor opvullen facts_treatment table
+		- Schrijven basis-sql voor aanmaak facts_treatments table
+		- Code werkt in een lokale (non-airflow) context (omwille van testbaarheid)
+		- Joinen van twee CSV files (Outpatient_Treatments & Outpatient_Registrations)
+		- Transformatie elementen binnen Dataframes
+		- Partiële opvulling (Foreign Keys naar Dimension tables worden nog niet opgevuld)
+		- Testen code
+	- Volgende stappen (TO DO):
+		- Dimension tables opvullen
+		- Aanvullen foreign key waardes in facts_treatment table
+		- Toevoegen documentatie voor toelichting gemaakte keuzes inzake OLAP modellering
+
+### Week 23 maart
+- (Aanvullen)
 
 ## Geraadpleegde bronnen
 ### Boeken
