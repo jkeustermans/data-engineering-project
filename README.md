@@ -245,6 +245,12 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 - Subregions (ondersteuningstabel)
 	- Bevat code en naam van de region (institution refereert hiernaar)
 
+### Datawarehouse/OLAP Model
+#### Structuur model
+TODO: beschrijving analyse
+
+![Datamodel OLAP](documentation/Datamodel-OLAP.png)
+
 ## Implementatie
 ### FTP Server
 - FTP opzet duiding
