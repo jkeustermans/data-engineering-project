@@ -510,7 +510,18 @@ TODO: beschrijving analyse
 		- Toevoegen documentatie voor toelichting gemaakte keuzes inzake OLAP modellering
 
 ### Week 23 maart
-- (Aanvullen)
+- Refactoring Offload code
+	- Optimalisatie code
+	- Aanmaken class structuur en opdelen methods
+- Implementeren offload OLAP structuur
+	- Offload Dimensie Patient
+	- Offload Dimensie Geographic
+	- Offload Dimensie Survey
+	- Offload Dimensie Department
+	- Uitgebreid Testen
+	- Nakijken Data Probleem (oorzaak incorrecte data OLTP systeem - missing link Country & Subregion)
+- Aanpassing DDL Script voor opzet tabellen OLAP
+- Correctie/Update in document Data Exfiltratie naar Landingzone.txt
 
 ## Geraadpleegde bronnen
 ### Boeken

@@ -88,5 +88,7 @@ from continents
 where sub_region_code is not null;
 
 -- Datasource 6: countries
-select distinct(iso), name
-from countries;
+select distinct(c.iso), c.name, cc.sub_region_code
+from countries c
+left outer join continents cc on cc.m49_code = c.continent
+where cc.sub_region_code is not null;
