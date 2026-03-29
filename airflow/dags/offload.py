@@ -14,26 +14,32 @@ FILE_UNIT_REGISTRATIONS_LOCAL_RUN = "/home/jkeustermans/JOpleiding/Data-Engineer
 
 class OLAPOffloadProcessor:
 
-    def __init__(self, input_file_patients, input_file_treatments):
-        self.input_file_patients = input_file_patients
-        self.input_file_treatments = input_file_treatments
+    def __init__(self, input_csv_treatments, input_csv_patients, input_csv_subregions, input_csv_countries, 
+                 input_csv_surveys, input_csv_institutions, input_csv_unit_registrations):
+        self.input_csv_treatments = input_csv_treatments
+        self.input_csv_patients = input_csv_patients
+        self.input_csv_subregions = input_csv_subregions
+        self.input_csv_countries = input_csv_countries
+        self.input_csv_surveys = input_csv_surveys
+        self.input_csv_institutions = input_csv_institutions
+        self.input_csv_unit_registrations = input_csv_unit_registrations
     
     def start_offload(self):
-        self.__offload_patients()
-        self.__offload_geographic()
-        self.__offload_survey()
-        self.__offload_department()
-        self.__offload_diagnosis()
-        self.__offload_indications()
-        self.__offload_treatments()
+        self.__offload_dim_patients()
+        self.__offload_dim_geographic()
+        self.__offload_dim_survey()
+        self.__offload_dim_department()
+        self.__offload_dim_diagnosis()
+        self.__offload_dim_indications()
+        self.__offload_fact_treatments()
 
     def __convert_value_to_boolean(self, val):
         if (pd.isnull(val)): return None
         elif (val == '1' or val == 'Y' or val.upper() == 'YES'): return True
         else: return False
 
-    def __read_treatments(self):
-        return pd.read_csv(FILE_TREATMENTS_LOCAL_RUN, sep="|", dtype={
+    def __read_treatments_from_input_csv(self):
+        return pd.read_csv(self.input_csv_treatments, sep="|", dtype={
             'id': 'str',
             'outpatient_id': 'str',
             'atc5_code': 'str',
@@ -53,8 +59,8 @@ class OLAPOffloadProcessor:
             'roa_according_to_guideline': 'str'
         })
     
-    def __read_patients(self):
-        return pd.read_csv(FILE_PATIENTS_LOCAL_RUN, sep="|", dtype={
+    def __read_patients_from_input_csv(self):
+        return pd.read_csv(self.input_csv_patients, sep="|", dtype={
             'id': 'str',
             'unit_registration_id': 'str',
             'age_group': 'str',
@@ -64,28 +70,28 @@ class OLAPOffloadProcessor:
             'symptom_codes': 'str'
         })
     
-    def __read_subregions(self):
-        return pd.read_csv(FILE_SUBREGIONS_LOCAL_RUN, sep="|", dtype={
+    def __read_subregions_from_input_csv(self):
+        return pd.read_csv(self.input_csv_subregions, sep="|", dtype={
             'sub_region_code': 'str',
             'sub_region_name': 'str'
         })
 
-    def __read_countries(self):
-        return pd.read_csv(FILE_COUNTRIES_LOCAL_RUN, sep="|", dtype={
+    def __read_countries_from_input_csv(self):
+        return pd.read_csv(self.input_csv_countries, sep="|", dtype={
             'iso': 'str',
             'name': 'str',
             'sub_region_code': 'str',
         })
 
-    def __read_surveys(self):
-        return pd.read_csv(FILE_SURVEYS_LOCAL_RUN, sep="|", dtype={
+    def __read_surveys_from_input_csv(self):
+        return pd.read_csv(self.input_csv_surveys, sep="|", dtype={
             'id': np.int32,
             'id_inquiry': np.int32,
             'id_institution': np.int32,
         })
 
-    def __read_institutions(self):
-        return pd.read_csv(FILE_INSTITUTIONS_LOCAL_RUN, sep="|", dtype={
+    def __read_institutions_from_input_csv(self):
+        return pd.read_csv(self.input_csv_institutions, sep="|", dtype={
             'institution_id': np.int32,
             'institution_name': 'str',
             'country_code': 'str',
@@ -93,8 +99,8 @@ class OLAPOffloadProcessor:
             'institution_subtype_code': 'str',
         })
 
-    def __read_unit_registrations(self):
-        return pd.read_csv(FILE_UNIT_REGISTRATIONS_LOCAL_RUN, sep="|", dtype={
+    def __read_unit_registrations_from_input_csv(self):
+        return pd.read_csv(self.input_csv_unit_registrations, sep="|", dtype={
             'id': 'str',
             'survey_id': np.int32,
             'medical_specialty_type': 'str',
@@ -102,25 +108,60 @@ class OLAPOffloadProcessor:
             'nbr_of_pharmacists': 'Int32'
     }, parse_dates=['survey_date'])
 
-    # Code die lokaal tegen een database uitgevoerd wordt (niet in een Apache Airflow context)
-    def __offload_treatments(self):
+    def __read_diagnosis_from_database(self):
+        with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
+            return pd.read_sql("SELECT * FROM dim_diagnosis", con=conn, dtype={
+                'diagnosis_id': np.int32,
+                'code': 'str',
+                'label': 'str'
+            })
+
+    def __read_indications_from_database(self):
+        with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
+            return pd.read_sql("SELECT * FROM dim_indication", con=conn, dtype={
+                'indication_id': np.int32,
+                'code': 'str',
+                'label': 'str'
+            })
+
+    def __read_dim_geographic_from_database(self):
+        with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
+            return pd.read_sql("SELECT geographic_id, country_iso FROM dim_geographic", con=conn, dtype={
+                'geographic_id': np.int32,
+                'country_iso': 'str'
+            })
+
+    # Offload code van alle dimension en facts tabellen
+    def __offload_fact_treatments(self):
         # Voorbereiding Treatments DataFrame
-        df_treatments = self.__read_treatments()
+        df_treatments = self.__read_treatments_from_input_csv()
         df_treatments["therapy_intended_duration_known"] = df_treatments["therapy_intended_duration_known"].apply(lambda val: self.__convert_value_to_boolean(val)).astype(bool)
         df_treatments = df_treatments.rename(columns = { "id": "treatment_id" })
-        # df_departments = 
         
-        # Voorbereiding Outpatients DataFrame
-        df_outpatients = self.__read_patients()
+        # Outpatients (Link + Degenerate Dimension)
+        df_outpatients = self.__read_patients_from_input_csv()
         df_outpatients = df_outpatients.rename(columns = { "id": "outpatient_id" })
-
-        # Join van DataSets
-        # Opgelet Foreign keys zijn nog niet opgenomen
         df_merged = df_treatments.merge(df_outpatients[['outpatient_id', 'unit_registration_id', 'weight', 'birth_weight']], how="left", left_on = "outpatient_id", right_on = "outpatient_id")
-        # df_merged = df_merged.merge( met department -> survey_id invvullen
         df_merged = df_merged.rename(columns = { "weight": "patient_weight" })
         df_merged = df_merged.rename(columns = { "birth_weight": "patient_birth_weight" })
         df_merged = df_merged.rename(columns = { "unit_registration_id": "department_id" })
+
+        # Link Geographic & Department & Survey
+        df_linked_data_set = self.__retrieve_linked_dataset()
+        df_merged = df_merged.merge(df_linked_data_set, how="left", left_on="outpatient_id", right_on="patient_id")
+
+        # Link Diagnosis
+        df_diagnosis = self.__read_diagnosis_from_database()
+        df_merged = df_merged.merge(df_diagnosis, how="left", left_on="diagnosis_code", right_on="code")
+        df_merged = df_merged.drop(columns=["diagnosis_code", "diagnosis_id", "label"])
+        df_merged = df_merged.rename(columns = { "code": "diagnosis_id" })
+        
+        # Link Indications
+        df_indications = self.__read_indications_from_database()
+        df_merged = df_merged.merge(df_indications, how="left", left_on="indication_code", right_on="code")
+        df_merged = df_merged.drop(columns=["indication_code", "indication_id", "label"])
+        df_merged = df_merged.rename(columns = { "code": "indication_id" })
+        
         df_merged = df_merged[[
             'treatment_id',
             'patient_weight',
@@ -139,9 +180,12 @@ class OLAPOffloadProcessor:
             'duration_according_to_guideline',
             'roa_according_to_guideline',
             'outpatient_id',
-            'department_id']]
+            'department_id',
+            'diagnosis_id',
+            'indication_id',
+            'geographic_id',
+            'survey_id']]
 
-        print(df_merged.info())
         with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
             conn.begin()                                                   # Start Transactie
             truncate_query = db.text("TRUNCATE TABLE fact_treatments")
@@ -149,9 +193,23 @@ class OLAPOffloadProcessor:
             df_merged.to_sql("fact_treatments", con=conn, if_exists="append", index=False)
             conn.commit()                                                  # Commit Transactie
 
-    def __offload_patients(self):
+    def __retrieve_linked_dataset(self):
+        # Link een aantal datasets aan mekaar voor bepalen foreign keys in fact_treatments table 
+        df_patients = self.__read_patients_from_input_csv()
+        df_surveys = self.__read_surveys_from_input_csv()
+        df_institutions = self.__read_institutions_from_input_csv()
+        df_unit_registrations = self.__read_unit_registrations_from_input_csv()
+        df_patients = df_patients.rename(columns={'id': 'patient_id'})
+        df_merged = df_patients.merge(df_unit_registrations, how="left", left_on="unit_registration_id", right_on="id")
+        df_merged = df_merged.merge(df_surveys, how="left", left_on="survey_id", right_on="id")
+        df_merged = df_merged.merge(df_institutions, how="left", left_on="id_institution", right_on="institution_id")
+        df_dim_geographic = self.__read_dim_geographic_from_database()
+        df_merged = df_merged.merge(df_dim_geographic, how="left", left_on="country_code", right_on="country_iso")
+        return df_merged[["patient_id", "survey_id", "geographic_id"]]
+
+    def __offload_dim_patients(self):
         # Voorbereiding Outpatients DataFrame
-        df_outpatients = self.__read_patients()
+        df_outpatients = self.__read_patients_from_input_csv()
         df_outpatients = df_outpatients.rename(columns = { "id": "patient_id" })
         df_outpatients = df_outpatients.drop(columns=["unit_registration_id", "weight", "birth_weight"])
 
@@ -162,10 +220,10 @@ class OLAPOffloadProcessor:
             df_outpatients.to_sql("dim_patient", con=conn, if_exists="append", index=False)
             conn.commit()                                                  # Commit Transactie
     
-    def __offload_geographic(self):
+    def __offload_dim_geographic(self):
         # Voorbereiding Geographic DataFrame
-        df_subregions = self.__read_subregions()
-        df_countries = self.__read_countries()
+        df_subregions = self.__read_subregions_from_input_csv()
+        df_countries = self.__read_countries_from_input_csv()
         df_merged = df_countries.merge(df_subregions, how="left", left_on = "sub_region_code", right_on = "sub_region_code")
         df_merged = df_merged.rename(columns = {
             'iso': 'country_iso',
@@ -189,22 +247,22 @@ class OLAPOffloadProcessor:
         elif id ==  36: return (2026, 1)
         else: return (2026, 2)
 
-    def __offload_survey(self):
+    def __offload_dim_survey(self):
         # Voorbereiding Survey DataFrame
-        df_surveys = self.__read_surveys()
+        df_surveys = self.__read_surveys_from_input_csv()
         sr_inquiry_year_sequence = df_surveys["id_inquiry"].apply(lambda d: self.__convert_inquiry_id_to_year_and_sequence(d))
         df_surveys["year"] = sr_inquiry_year_sequence.map(lambda d: d[0])
         df_surveys["period_seq_number"] = sr_inquiry_year_sequence.map(lambda d: d[1])
         df_surveys = df_surveys.rename(columns={'id': 'survey_id'})
         df_surveys = df_surveys.drop(columns=["id_inquiry", "id_institution"])
         with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
-            conn.begin()                                                   # Start Transactie
+            conn.begin()    # Start Transactie
             truncate_query = db.text("TRUNCATE TABLE dim_survey")
             conn.execute(truncate_query)
             df_surveys.to_sql("dim_survey", con=conn, if_exists="append", index=False)
-            conn.commit()                                                  # Commit Transactie
+            conn.commit()   # Commit Transactie
     
-    def __offload_diagnosis(self):
+    def __offload_dim_diagnosis(self):
         # Kon ook rechtstreeks met pandas gedaan worden maar voor educatieve doeleinden is er hier even een andere manier van werken gebruikt
         with psy.connect(host="localhost", port=5433, dbname="dwh", user="dwh", password="dwh") as conn:
             with conn.transaction():
@@ -259,11 +317,11 @@ class OLAPOffloadProcessor:
                 conn.execute("INSERT INTO dim_diagnosis (diagnosis_id, code, label) values(%s, %s, %s)", (48, 'GO', 'Acute infectious diarrhoea/gastroenteritis'))
                 conn.execute("INSERT INTO dim_diagnosis (diagnosis_id, code, label) values(%s, %s, %s)", (49, 'Typh-fever', 'Typhoid fever/enteric fever'))
 
-    def __offload_indications(self):
+    def __offload_dim_indications(self):
         # Kon ook rechtstreeks met pandas gedaan worden maar voor educatieve doeleinden is er hier even een andere manier van werken gebruikt
         with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
-            conn.begin()                                                   # Start Transactie
-            metadata = db.MetaData()                                       # Extractie van metadata
+            conn.begin()    # Start Transactie
+            metadata = db.MetaData()    # Extractie van metadata
             table_indications = db.Table('dim_indication', metadata, autoload_with=conn, )    # Table object
             conn.execute(text("TRUNCATE TABLE dim_indication"))
             conn.execute(db.insert(table_indications).values(indication_id=1, code="CAI", label="Community Acquired Infection"))
@@ -276,13 +334,13 @@ class OLAPOffloadProcessor:
             conn.execute(db.insert(table_indications).values(indication_id=8, code="SP2", label="Surgical prophylaxis - one day"))
             conn.execute(db.insert(table_indications).values(indication_id=9, code="SP3", label="Surgical prophylaxis - >1 day"))
             conn.execute(db.insert(table_indications).values(indication_id=10, code="UNK", label="Completely unknown indication"))
-            conn.commit()                                                  # Commit Transactie
+            conn.commit()   # Commit Transactie
 
-    def __offload_department(self):
+    def __offload_dim_department(self):
         # Voorbereiding Department DataFrame
-        df_surveys = self.__read_surveys()
-        df_institutions = self.__read_institutions()
-        df_unit_registrations = self.__read_unit_registrations()
+        df_surveys = self.__read_surveys_from_input_csv()
+        df_institutions = self.__read_institutions_from_input_csv()
+        df_unit_registrations = self.__read_unit_registrations_from_input_csv()
         df_unit_registrations = df_unit_registrations.rename(columns = { "id": "unit_registration_id" })
         df_merged = df_unit_registrations.merge(df_surveys, how="left", left_on = "survey_id", right_on = "id")
         df_merged = df_merged.rename(columns = { "id": "survey_id" })
@@ -291,14 +349,20 @@ class OLAPOffloadProcessor:
         df_merged = df_merged.rename(columns = { "unit_registration_id": "department_id" })
         df_merged = df_merged.rename(columns = { "medical_specialty_type": "medical_specialty_type_code" })
         
-        print(df_merged.info())
         with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
-            conn.begin()                                                   # Start Transactie
+            conn.begin()   # Start Transactie
             truncate_query = db.text("TRUNCATE TABLE dim_department")
             conn.execute(truncate_query)
             df_merged.to_sql("dim_department", con=conn, if_exists="append", index=False)
-            conn.commit()                                                  # Commit Transactie
+            conn.commit()  # Commit Transactie
 
 # Main code
-offload: OLAPOffloadProcessor = OLAPOffloadProcessor(FILE_PATIENTS_LOCAL_RUN, FILE_TREATMENTS_LOCAL_RUN)
+offload: OLAPOffloadProcessor = OLAPOffloadProcessor(
+    FILE_TREATMENTS_LOCAL_RUN,
+    FILE_PATIENTS_LOCAL_RUN,
+    FILE_SUBREGIONS_LOCAL_RUN,
+    FILE_COUNTRIES_LOCAL_RUN,
+    FILE_SURVEYS_LOCAL_RUN,
+    FILE_INSTITUTIONS_LOCAL_RUN,
+    FILE_UNIT_REGISTRATIONS_LOCAL_RUN)
 offload.start_offload()

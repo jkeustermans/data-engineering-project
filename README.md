@@ -518,10 +518,17 @@ TODO: beschrijving analyse
 	- Offload Dimensie Geographic
 	- Offload Dimensie Survey
 	- Offload Dimensie Department
+	- Offload Dimensie Diagnosis
+	- Offload Dimensie Indication
+	- Foreign keys in Treatment Facts table opvullen
+	- Testbaarheid class verhogen (constructor injection van (locatie) files)
 	- Uitgebreid Testen
-	- Nakijken Data Probleem (oorzaak incorrecte data OLTP systeem - missing link Country & Subregion)
+	- Nakijken Data Probleem (oorzaak incorrecte data OLTP systeem - missing link Country & Subregion = data quality issue)
 - Aanpassing DDL Script voor opzet tabellen OLAP
 - Correctie/Update in document Data Exfiltratie naar Landingzone.txt
+- Volgende stappen:
+	- Van lokale class naar integratie in Apache Airflow
+	- Integreren data-offload met Google BigQuery
 
 ## Geraadpleegde bronnen
 ### Boeken
