@@ -12,10 +12,17 @@ FILE_SURVEYS_LOCAL_RUN = "/home/jkeustermans/JOpleiding/Data-Engineering/Project
 FILE_INSTITUTIONS_LOCAL_RUN = "/home/jkeustermans/JOpleiding/Data-Engineering/Project/data_landingzone/Institutions.csv"
 FILE_UNIT_REGISTRATIONS_LOCAL_RUN = "/home/jkeustermans/JOpleiding/Data-Engineering/Project/data_landingzone/Unit_Registrations.csv"
 
+LOCAL_RUN_DB_HOST = "localhost"
+LOCAL_RUN_DB_PORT = 5433
+LOCAL_RUN_DB_NAME = "dwh"
+LOCAL_RUN_DB_USER = "dwh"
+LOCAL_RUN_DB_PASSWORD = "dwh"
+
 class OLAPOffloadProcessor:
 
     def __init__(self, input_csv_treatments, input_csv_patients, input_csv_subregions, input_csv_countries, 
-                 input_csv_surveys, input_csv_institutions, input_csv_unit_registrations):
+                 input_csv_surveys, input_csv_institutions, input_csv_unit_registrations,
+                 host, port, dbname, user, password):
         self.input_csv_treatments = input_csv_treatments
         self.input_csv_patients = input_csv_patients
         self.input_csv_subregions = input_csv_subregions
@@ -23,6 +30,11 @@ class OLAPOffloadProcessor:
         self.input_csv_surveys = input_csv_surveys
         self.input_csv_institutions = input_csv_institutions
         self.input_csv_unit_registrations = input_csv_unit_registrations
+        self.db_host = host
+        self.db_port = port
+        self.db_name = dbname
+        self.db_user = user
+        self.db_password = password
     
     def start_offload(self):
         self.__offload_dim_patients()
@@ -109,7 +121,7 @@ class OLAPOffloadProcessor:
     }, parse_dates=['survey_date'])
 
     def __read_diagnosis_from_database(self):
-        with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
+        with db.create_engine(self.__determine_dwh_database_url()).connect() as conn:
             return pd.read_sql("SELECT * FROM dim_diagnosis", con=conn, dtype={
                 'diagnosis_id': np.int32,
                 'code': 'str',
@@ -117,7 +129,7 @@ class OLAPOffloadProcessor:
             })
 
     def __read_indications_from_database(self):
-        with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
+        with db.create_engine(self.__determine_dwh_database_url()).connect() as conn:
             return pd.read_sql("SELECT * FROM dim_indication", con=conn, dtype={
                 'indication_id': np.int32,
                 'code': 'str',
@@ -125,7 +137,7 @@ class OLAPOffloadProcessor:
             })
 
     def __read_dim_geographic_from_database(self):
-        with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
+        with db.create_engine(self.__determine_dwh_database_url()).connect() as conn:
             return pd.read_sql("SELECT geographic_id, country_iso FROM dim_geographic", con=conn, dtype={
                 'geographic_id': np.int32,
                 'country_iso': 'str'
@@ -186,7 +198,7 @@ class OLAPOffloadProcessor:
             'geographic_id',
             'survey_id']]
 
-        with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
+        with db.create_engine(self.__determine_dwh_database_url()).connect() as conn:
             conn.begin()                                                   # Start Transactie
             truncate_query = db.text("TRUNCATE TABLE fact_treatments")
             conn.execute(truncate_query)
@@ -213,7 +225,7 @@ class OLAPOffloadProcessor:
         df_outpatients = df_outpatients.rename(columns = { "id": "patient_id" })
         df_outpatients = df_outpatients.drop(columns=["unit_registration_id", "weight", "birth_weight"])
 
-        with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
+        with db.create_engine(self.__determine_dwh_database_url()).connect() as conn:
             conn.begin()                                                   # Start Transactie
             truncate_query = db.text("TRUNCATE TABLE dim_patient")
             conn.execute(truncate_query)
@@ -230,7 +242,7 @@ class OLAPOffloadProcessor:
             'name': 'country_name'
         })
         df_merged = df_merged.reset_index().rename(columns={'index': 'geographic_id'})
-        with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
+        with db.create_engine(self.__determine_dwh_database_url()).connect() as conn:
             conn.begin()                                                   # Start Transactie
             truncate_query = db.text("TRUNCATE TABLE dim_geographic")
             conn.execute(truncate_query)
@@ -255,7 +267,7 @@ class OLAPOffloadProcessor:
         df_surveys["period_seq_number"] = sr_inquiry_year_sequence.map(lambda d: d[1])
         df_surveys = df_surveys.rename(columns={'id': 'survey_id'})
         df_surveys = df_surveys.drop(columns=["id_inquiry", "id_institution"])
-        with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
+        with db.create_engine(self.__determine_dwh_database_url()).connect() as conn:
             conn.begin()    # Start Transactie
             truncate_query = db.text("TRUNCATE TABLE dim_survey")
             conn.execute(truncate_query)
@@ -264,7 +276,7 @@ class OLAPOffloadProcessor:
     
     def __offload_dim_diagnosis(self):
         # Kon ook rechtstreeks met pandas gedaan worden maar voor educatieve doeleinden is er hier even een andere manier van werken gebruikt
-        with psy.connect(host="localhost", port=5433, dbname="dwh", user="dwh", password="dwh") as conn:
+        with psy.connect(host=self.db_host, port=self.db_port, dbname=self.db_name, user=self.db_user, password=self.db_password) as conn:
             with conn.transaction():
                 conn.execute("TRUNCATE TABLE dim_diagnosis")
                 conn.execute("INSERT INTO dim_diagnosis (diagnosis_id, code, label) values(%s, %s, %s)", (1, 'Proph CNS', 'Prophylaxis for CNS (meningococcal)'))
@@ -319,7 +331,7 @@ class OLAPOffloadProcessor:
 
     def __offload_dim_indications(self):
         # Kon ook rechtstreeks met pandas gedaan worden maar voor educatieve doeleinden is er hier even een andere manier van werken gebruikt
-        with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
+        with db.create_engine(self.__determine_dwh_database_url()).connect() as conn:
             conn.begin()    # Start Transactie
             metadata = db.MetaData()    # Extractie van metadata
             table_indications = db.Table('dim_indication', metadata, autoload_with=conn, )    # Table object
@@ -349,20 +361,28 @@ class OLAPOffloadProcessor:
         df_merged = df_merged.rename(columns = { "unit_registration_id": "department_id" })
         df_merged = df_merged.rename(columns = { "medical_specialty_type": "medical_specialty_type_code" })
         
-        with db.create_engine("postgresql+psycopg://dwh:dwh@localhost:5433/dwh").connect() as conn:
+        with db.create_engine(self.__determine_dwh_database_url()).connect() as conn:
             conn.begin()   # Start Transactie
             truncate_query = db.text("TRUNCATE TABLE dim_department")
             conn.execute(truncate_query)
             df_merged.to_sql("dim_department", con=conn, if_exists="append", index=False)
             conn.commit()  # Commit Transactie
+    
+    def __determine_dwh_database_url(self):
+        return f"postgresql+psycopg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
 # Main code
-offload: OLAPOffloadProcessor = OLAPOffloadProcessor(
-    FILE_TREATMENTS_LOCAL_RUN,
-    FILE_PATIENTS_LOCAL_RUN,
-    FILE_SUBREGIONS_LOCAL_RUN,
-    FILE_COUNTRIES_LOCAL_RUN,
-    FILE_SURVEYS_LOCAL_RUN,
-    FILE_INSTITUTIONS_LOCAL_RUN,
-    FILE_UNIT_REGISTRATIONS_LOCAL_RUN)
-offload.start_offload()
+# offload: OLAPOffloadProcessor = OLAPOffloadProcessor(
+#     FILE_TREATMENTS_LOCAL_RUN,
+#     FILE_PATIENTS_LOCAL_RUN,
+#     FILE_SUBREGIONS_LOCAL_RUN,
+#     FILE_COUNTRIES_LOCAL_RUN,
+#     FILE_SURVEYS_LOCAL_RUN,
+#     FILE_INSTITUTIONS_LOCAL_RUN,
+#     FILE_UNIT_REGISTRATIONS_LOCAL_RUN,
+#     LOCAL_RUN_DB_HOST,
+#     LOCAL_RUN_DB_PORT,
+#     LOCAL_RUN_DB_NAME,
+#     LOCAL_RUN_DB_USER,
+#     LOCAL_RUN_DB_PASSWORD)
+# offload.start_offload()
