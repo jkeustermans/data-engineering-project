@@ -329,6 +329,8 @@ TODO: beschrijving analyse
 		- https://www.geeksforgeeks.org/mongodb/mongodb-python-insert-update-data/
 ### Google BigQuery
 - Opzet project in Google Cloud workspace
+	- Link: https://cloud.google.com/
+	- Kies vervolgens 'Console' om naar de console te gaan
 - Opzet Service Account voor tools die via API Google Cloud willen aanspreken
 	- Service account jkeustermans aangemaakt als BigQuery Admin. Procdure:
 		- Log aan in Google Cloud Dashboard
@@ -529,6 +531,24 @@ TODO: beschrijving analyse
 - Volgende stappen:
 	- Van lokale class naar integratie in Apache Airflow
 	- Integreren data-offload met Google BigQuery
+
+### Week 30 maart
+- Integreren OLAP Offload naar Datawarehouse
+	- Refactoring OLAPOffloadProcessor class
+		- Configuratie bestandslocatie dynamisch maken (mogelijkheid tot configureren class voor verschillende processing scenario's (lokale test, Airflow))
+			- Constructor injection 
+		- Dynamisch maken links database/dwh
+		- Regressietest (lokaal scenario)
+	- Integreren offload datawarehouse in Apache Airflow
+		- Klaarzetten flows in FTP
+		- Schrijven processor voor overzet FTP files
+		- Integratie OLAPOffloadProcessor Apache Airflow
+		- Schrijven Airflow DAG code voor Airflow verwerkinf
+		- Testen proces
+	- Integreren offload naar BigQuery in Apache Airflow
+		- Schrijven DDL voor BigQuery (schema & tabellen)
+		- Schrijven initiële code data transfer naar BigQuery van dim_indication table
+		- Testen
 
 ## Geraadpleegde bronnen
 ### Boeken

@@ -120,7 +120,7 @@ class OLAPOffloadProcessor:
             'nbr_of_pharmacists': 'Int32'
     }, parse_dates=['survey_date'])
 
-    def __read_diagnosis_from_database(self):
+    def read_diagnosis_from_database(self):
         with db.create_engine(self.__determine_dwh_database_url()).connect() as conn:
             return pd.read_sql("SELECT * FROM dim_diagnosis", con=conn, dtype={
                 'diagnosis_id': np.int32,
@@ -128,7 +128,7 @@ class OLAPOffloadProcessor:
                 'label': 'str'
             })
 
-    def __read_indications_from_database(self):
+    def read_indications_from_database(self):
         with db.create_engine(self.__determine_dwh_database_url()).connect() as conn:
             return pd.read_sql("SELECT * FROM dim_indication", con=conn, dtype={
                 'indication_id': np.int32,
@@ -136,7 +136,7 @@ class OLAPOffloadProcessor:
                 'label': 'str'
             })
 
-    def __read_dim_geographic_from_database(self):
+    def read_dim_geographic_from_database(self):
         with db.create_engine(self.__determine_dwh_database_url()).connect() as conn:
             return pd.read_sql("SELECT geographic_id, country_iso FROM dim_geographic", con=conn, dtype={
                 'geographic_id': np.int32,
@@ -163,13 +163,13 @@ class OLAPOffloadProcessor:
         df_merged = df_merged.merge(df_linked_data_set, how="left", left_on="outpatient_id", right_on="patient_id")
 
         # Link Diagnosis
-        df_diagnosis = self.__read_diagnosis_from_database()
+        df_diagnosis = self.read_diagnosis_from_database()
         df_merged = df_merged.merge(df_diagnosis, how="left", left_on="diagnosis_code", right_on="code")
         df_merged = df_merged.drop(columns=["diagnosis_code", "diagnosis_id", "label"])
         df_merged = df_merged.rename(columns = { "code": "diagnosis_id" })
         
         # Link Indications
-        df_indications = self.__read_indications_from_database()
+        df_indications = self.read_indications_from_database()
         df_merged = df_merged.merge(df_indications, how="left", left_on="indication_code", right_on="code")
         df_merged = df_merged.drop(columns=["indication_code", "indication_id", "label"])
         df_merged = df_merged.rename(columns = { "code": "indication_id" })
@@ -215,7 +215,7 @@ class OLAPOffloadProcessor:
         df_merged = df_patients.merge(df_unit_registrations, how="left", left_on="unit_registration_id", right_on="id")
         df_merged = df_merged.merge(df_surveys, how="left", left_on="survey_id", right_on="id")
         df_merged = df_merged.merge(df_institutions, how="left", left_on="id_institution", right_on="institution_id")
-        df_dim_geographic = self.__read_dim_geographic_from_database()
+        df_dim_geographic = self.read_dim_geographic_from_database()
         df_merged = df_merged.merge(df_dim_geographic, how="left", left_on="country_code", right_on="country_iso")
         return df_merged[["patient_id", "survey_id", "geographic_id"]]
 

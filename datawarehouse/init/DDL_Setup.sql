@@ -3,7 +3,7 @@ create table dim_patient(
 	age_group varchar(20),
 	gender varchar(20),
 	symptom_codes varchar(500)
-)
+);
 
 create table dim_geographic(
 	geographic_id decimal(5),
@@ -11,7 +11,7 @@ create table dim_geographic(
 	country_name varchar(50),
 	sub_region_code varchar(10),
 	sub_region_name varchar(50)
-)
+);
 
 create table dim_survey(
 	survey_id decimal(5),
