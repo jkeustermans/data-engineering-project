@@ -34,11 +34,70 @@ class DatawarehouseDAO:
 
     def read_dim_geographic_from_database(self):
         with db.create_engine(self.determine_dwh_database_url()).connect() as conn:
-            return pd.read_sql("SELECT geographic_id, country_iso FROM dim_geographic", con=conn, dtype={
+            return pd.read_sql("SELECT * FROM dim_geographic", con=conn, dtype={
                 'geographic_id': np.int32,
-                'country_iso': 'str'
+                'country_iso': 'str',
+                'country_name': 'str',
+                'sub_region_code': 'str',
+                'sub_region_name': 'str'
             })
-    
+
+    def read_dim_department_from_database(self):
+        with db.create_engine(self.determine_dwh_database_url()).connect() as conn:
+            return pd.read_sql("SELECT * FROM dim_department", con=conn, dtype={
+                'department_id': 'str',
+                'medical_specialty_type_code': 'str',
+                'nbr_of_doctors': 'str',
+                'nbr_of_pharmacists': 'str',
+                'institution_id': 'str',
+                'institution_name': 'str',
+                'institution_subtype_code': 'str'
+            })
+
+    def read_dim_survey_from_database(self):
+        with db.create_engine(self.determine_dwh_database_url()).connect() as conn:
+            return pd.read_sql("SELECT * FROM dim_survey", con=conn, dtype={
+                'survey_id': np.int32,
+                'year': np.int32,
+                'period_seq_number': np.int32
+            })
+
+    def read_dim_patient_from_database(self):
+        with db.create_engine(self.determine_dwh_database_url()).connect() as conn:
+            return pd.read_sql("SELECT * FROM dim_patient", con=conn, dtype={
+                'patient_id': 'str',
+                'age_group': 'str',
+                'gender': 'str',
+                'symptom_codes': 'str'
+            })
+        
+    def read_facts_treatment_from_database(self):
+        with db.create_engine(self.determine_dwh_database_url()).connect() as conn:
+            return pd.read_sql("SELECT * FROM fact_treatments", con=conn, dtype={
+                'treatment_id': 'str',
+                'patient_weight': np.float32,
+                'patient_birth_weight': np.float32,
+                'atc5_code': 'str',
+                'prescription_type': 'str',
+                'single_unit_dose': np.float32,
+                'dose_unit': 'str',
+                'daily_doses': np.float32,
+                'therapy_intended_duration_known': 'str',
+                'therapy_intended_duration': np.float32,
+                'reason_in_notes': 'str',
+                'reference_guideline_exists': 'str',
+                'drug_according_to_guideline': 'str',
+                'dose_according_to_guideline': 'str',
+                'duration_according_to_guideline': 'str',
+                'roa_according_to_guideline': 'str',
+                'outpatient_id': 'str',
+                'department_id': 'str',
+                'diagnosis_id': 'str',
+                'indication_id': 'str',
+                'geographic_id': np.float32,
+                'survey_id': np.float32
+            })
+
     def persist_dim_department(self, dim_department_dataframe: pd.DataFrame):
         with db.create_engine(self.determine_dwh_database_url()).connect() as conn:
             conn.begin()   # Start Transactie

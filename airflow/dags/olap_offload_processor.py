@@ -1,8 +1,4 @@
 import pandas as pd
-import numpy as np
-import sqlalchemy as db
-import psycopg as psy
-from sqlalchemy import text
 from olap_csv_reader import OLAPCSVReader
 from dwh_dao import DatawarehouseDAO
 

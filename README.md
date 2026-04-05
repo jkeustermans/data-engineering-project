@@ -543,12 +543,17 @@ TODO: beschrijving analyse
 		- Klaarzetten flows in FTP
 		- Schrijven processor voor overzet FTP files
 		- Integratie OLAPOffloadProcessor Apache Airflow
-		- Schrijven Airflow DAG code voor Airflow verwerkinf
+		- Schrijven Airflow DAG code voor Airflow verwerking
 		- Testen proces
 	- Integreren offload naar BigQuery in Apache Airflow
+		- Refactoring van OLAPOffloadProcessor code
+			- Extractie code voor uitlezen CSV files naar OLAPCSVReader class
+			- Extractie code voor uitlezen & persisteren data van Datawarehouse naar DatawarehouseDAO
 		- Schrijven DDL voor BigQuery (schema & tabellen)
-		- Schrijven initiële code data transfer naar BigQuery van dim_indication table
-		- Testen
+		- Implementeren BigQueryOffloadProcessor
+			- Bevat code voor persisteren dataframes met data uit Datawarehouse naar Google BigQuery tables
+			- Integreren offload naar BigQuery in Apache Airflow DAG
+	- Testen volledige flow (FTP-landingzone -> Persisteren Datawarehouse -> Persisteren Google BigQuery)
 
 ## Geraadpleegde bronnen
 ### Boeken
