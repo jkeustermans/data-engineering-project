@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from airflow.sdk import dag, task
 from google.cloud import bigquery
 from google.cloud.bigquery import Table
+from dwh_dao import DatawarehouseDAO
 import os
 import olap_offload_processor as oop
 from decimal import *
@@ -92,23 +93,10 @@ def Offload_OLAP():
     def offload_to_bigquery():
         # LOCAL RUN: 
         # os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/home/jkeustermans/JOpleiding/Data-Engineering/Project/airflow/data/keys/google_jkeustermans_key.json'
+        
+        dwhDAO = DatawarehouseDAO(DAG_RUN_DB_HOST, DAG_RUN_DB_PORT, DAG_RUN_DB_NAME, DAG_RUN_DB_USER, DAG_RUN_DB_PASSWORD)
 
-        processor = oop.OLAPOffloadProcessor(
-                    FILE_TREATMENTS,
-                    FILE_PATIENTS,
-                    FILE_SUBREGIONS,
-                    FILE_COUNTRIES,
-                    FILE_SURVEYS,
-                    FILE_INSTITUTIONS,
-                    FILE_UNIT_REGISTRATIONS,
-                    DAG_RUN_DB_HOST,    # "localhost",
-                    DAG_RUN_DB_PORT,    # 5433,
-                    DAG_RUN_DB_NAME,
-                    DAG_RUN_DB_USER,
-                    DAG_RUN_DB_PASSWORD
-                )
-
-        df_indications = processor.read_indications_from_database()
+        df_indications = dwhDAO.read_indications_from_database()
         df_indications = df_indications.head(CLOUD_RECORD_LIMIT)
 
         print(df_indications)
