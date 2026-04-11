@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-class OLAPCSVReader:
+class CSVReader:
      def __init__(self, input_csv_treatments, input_csv_patients, input_csv_subregions, input_csv_countries, 
                  input_csv_surveys, input_csv_institutions, input_csv_unit_registrations):
         self.input_csv_treatments = input_csv_treatments

@@ -547,7 +547,7 @@ TODO: beschrijving analyse
 		- Testen proces
 	- Integreren offload naar BigQuery in Apache Airflow
 		- Refactoring van OLAPOffloadProcessor code
-			- Extractie code voor uitlezen CSV files naar OLAPCSVReader class
+			- Extractie code voor uitlezen CSV files naar CSVReader class
 			- Extractie code voor uitlezen & persisteren data van Datawarehouse naar DatawarehouseDAO
 		- Schrijven DDL voor BigQuery (schema & tabellen)
 		- Implementeren BigQueryOffloadProcessor
@@ -555,18 +555,29 @@ TODO: beschrijving analyse
 			- Integreren offload naar BigQuery in Apache Airflow DAG
 	- Testen volledige flow (FTP-landingzone -> Persisteren Datawarehouse -> Persisteren Google BigQuery)
 
+### Week 6 april
+- Implementeren offload processing naar MongoDB
+	- Refactoring bestaande classes (rename, extractie constanten,...)
+	- Implementeren documentdb_offload_processor
+	- Testen initiële implementatie
+	- Regressietesten DAG Processing
+- Doornemen literatuur
+	- AI Agents and Applications - With LangChain, LangGraph and MCP
+
 ## Geraadpleegde bronnen
 ### Boeken
 - Leerboek Business Intelligence (Peter ter Braake - 2022)
 	- Status: gelezen
 - Fundamentals of Data Engineering (Joe Reis, Matt Housley - 2022)
 	- Status: grotendeels gelezen
+- Pandas in Action (Boris Paskhaver - 2021)
+	- Status: grotendeels gelezen
 - Data Pipelines with Apache Airflow (Bas P. Harenslak and Julian Rutger de Ruiter - 2021)
 	- Status: aan het doornemen
 - Data Engineering with Google Cloud Platform (Adi Wijaya - 2024)
 	- Status: aan het doornemen
-- Pandas in Action (Boris Paskhaver - 2021)
-	- Status: grotendeels gelezen
+- AI Agents and Applications - With LangChain, LangGraph and MCP (Robert Infante - 2026)
+	- Status: aan het doornemen
 ### Internet Resources (hoofdartikels)
 - What is a Data Lake? Definition, Architecture, and Use Cases
 	- https://www.datacamp.com/blog/what-is-a-data-lake

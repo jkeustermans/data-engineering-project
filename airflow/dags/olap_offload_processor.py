@@ -1,27 +1,14 @@
 import pandas as pd
-from olap_csv_reader import OLAPCSVReader
+from csv_reader import CSVReader
 from dwh_dao import DatawarehouseDAO
-
-FILE_TREATMENTS_LOCAL_RUN = "/home/jkeustermans/JOpleiding/Data-Engineering/Project/data_landingzone/Outpatient_Treatments.csv"
-FILE_PATIENTS_LOCAL_RUN = "/home/jkeustermans/JOpleiding/Data-Engineering/Project/data_landingzone/Outpatient_Registrations.csv"
-FILE_SUBREGIONS_LOCAL_RUN = "/home/jkeustermans/JOpleiding/Data-Engineering/Project/data_landingzone/Subregions.csv"
-FILE_COUNTRIES_LOCAL_RUN = "/home/jkeustermans/JOpleiding/Data-Engineering/Project/data_landingzone/Countries.csv"
-FILE_SURVEYS_LOCAL_RUN = "/home/jkeustermans/JOpleiding/Data-Engineering/Project/data_landingzone/Surveys.csv"
-FILE_INSTITUTIONS_LOCAL_RUN = "/home/jkeustermans/JOpleiding/Data-Engineering/Project/data_landingzone/Institutions.csv"
-FILE_UNIT_REGISTRATIONS_LOCAL_RUN = "/home/jkeustermans/JOpleiding/Data-Engineering/Project/data_landingzone/Unit_Registrations.csv"
-
-LOCAL_RUN_DB_HOST = "localhost"
-LOCAL_RUN_DB_PORT = 5433
-LOCAL_RUN_DB_NAME = "dwh"
-LOCAL_RUN_DB_USER = "dwh"
-LOCAL_RUN_DB_PASSWORD = "dwh"
+from constants import *
 
 class OLAPOffloadProcessor:
 
     def __init__(self, input_csv_treatments, input_csv_patients, input_csv_subregions, input_csv_countries, 
                  input_csv_surveys, input_csv_institutions, input_csv_unit_registrations,
                  host, port, dbname, user, password):
-        self.olap_csv_reader = OLAPCSVReader(
+        self.csv_reader = CSVReader(
             input_csv_treatments,
             input_csv_patients,
             input_csv_subregions,
@@ -44,12 +31,12 @@ class OLAPOffloadProcessor:
     # Offload code van alle dimension en facts tabellen
     def __offload_fact_treatments(self):
         # Voorbereiding Treatments DataFrame
-        df_treatments = self.olap_csv_reader.read_treatments_from_input_csv()
+        df_treatments = self.csv_reader.read_treatments_from_input_csv()
         df_treatments["therapy_intended_duration_known"] = df_treatments["therapy_intended_duration_known"].apply(lambda val: self.__convert_value_to_boolean(val)).astype(bool)
         df_treatments = df_treatments.rename(columns = { "id": "treatment_id" })
         
         # Outpatients (Link + Degenerate Dimension)
-        df_outpatients = self.olap_csv_reader.read_patients_from_input_csv()
+        df_outpatients = self.csv_reader.read_patients_from_input_csv()
         df_outpatients = df_outpatients.rename(columns = { "id": "outpatient_id" })
         df_merged = df_treatments.merge(df_outpatients[['outpatient_id', 'unit_registration_id', 'weight', 'birth_weight']], how="left", left_on = "outpatient_id", right_on = "outpatient_id")
         df_merged = df_merged.rename(columns = { "weight": "patient_weight" })
@@ -99,10 +86,10 @@ class OLAPOffloadProcessor:
 
     def __retrieve_linked_dataset(self):
         # Link een aantal datasets aan mekaar voor bepalen foreign keys in fact_treatments table 
-        df_patients = self.olap_csv_reader.read_patients_from_input_csv()
-        df_surveys = self.olap_csv_reader.read_surveys_from_input_csv()
-        df_institutions = self.olap_csv_reader.read_institutions_from_input_csv()
-        df_unit_registrations = self.olap_csv_reader.read_unit_registrations_from_input_csv()
+        df_patients = self.csv_reader.read_patients_from_input_csv()
+        df_surveys = self.csv_reader.read_surveys_from_input_csv()
+        df_institutions = self.csv_reader.read_institutions_from_input_csv()
+        df_unit_registrations = self.csv_reader.read_unit_registrations_from_input_csv()
         df_patients = df_patients.rename(columns={'id': 'patient_id'})
         df_merged = df_patients.merge(df_unit_registrations, how="left", left_on="unit_registration_id", right_on="id")
         df_merged = df_merged.merge(df_surveys, how="left", left_on="survey_id", right_on="id")
@@ -113,15 +100,15 @@ class OLAPOffloadProcessor:
 
     def __offload_dim_patients(self):
         # Voorbereiding Outpatients DataFrame
-        df_outpatients = self.olap_csv_reader.read_patients_from_input_csv()
+        df_outpatients = self.csv_reader.read_patients_from_input_csv()
         df_outpatients = df_outpatients.rename(columns = { "id": "patient_id" })
         df_outpatients = df_outpatients.drop(columns=["unit_registration_id", "weight", "birth_weight"])
         self.dwhDAO.persist_dim_patient(df_outpatients)
     
     def __offload_dim_geographic(self):
         # Voorbereiding Geographic DataFrame
-        df_subregions = self.olap_csv_reader.read_subregions_from_input_csv()
-        df_countries = self.olap_csv_reader.read_countries_from_input_csv()
+        df_subregions = self.csv_reader.read_subregions_from_input_csv()
+        df_countries = self.csv_reader.read_countries_from_input_csv()
         df_merged = df_countries.merge(df_subregions, how="left", left_on = "sub_region_code", right_on = "sub_region_code")
         df_merged = df_merged.rename(columns = {
             'iso': 'country_iso',
@@ -132,7 +119,7 @@ class OLAPOffloadProcessor:
     
     def __offload_dim_survey(self):
         # Voorbereiding Survey DataFrame
-        df_surveys = self.olap_csv_reader.read_surveys_from_input_csv()
+        df_surveys = self.csv_reader.read_surveys_from_input_csv()
         sr_inquiry_year_sequence = df_surveys["id_inquiry"].apply(lambda d: self.__convert_inquiry_id_to_year_and_sequence(d))
         df_surveys["year"] = sr_inquiry_year_sequence.map(lambda d: d[0])
         df_surveys["period_seq_number"] = sr_inquiry_year_sequence.map(lambda d: d[1])
@@ -148,9 +135,9 @@ class OLAPOffloadProcessor:
 
     def __offload_dim_department(self):
         # Voorbereiding Department DataFrame
-        df_surveys = self.olap_csv_reader.read_surveys_from_input_csv()
-        df_institutions = self.olap_csv_reader.read_institutions_from_input_csv()
-        df_unit_registrations = self.olap_csv_reader.read_unit_registrations_from_input_csv()
+        df_surveys = self.csv_reader.read_surveys_from_input_csv()
+        df_institutions = self.csv_reader.read_institutions_from_input_csv()
+        df_unit_registrations = self.csv_reader.read_unit_registrations_from_input_csv()
         df_unit_registrations = df_unit_registrations.rename(columns = { "id": "unit_registration_id" })
         df_merged = df_unit_registrations.merge(df_surveys, how="left", left_on = "survey_id", right_on = "id")
         df_merged = df_merged.rename(columns = { "id": "survey_id" })
@@ -175,7 +162,7 @@ class OLAPOffloadProcessor:
         elif (val == '1' or val == 'Y' or val.upper() == 'YES'): return True
         else: return False
 
-# Main code
+# Main (Test) code
 # offload: OLAPOffloadProcessor = OLAPOffloadProcessor(
 #     FILE_TREATMENTS_LOCAL_RUN,
 #     FILE_PATIENTS_LOCAL_RUN,

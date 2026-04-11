@@ -19,19 +19,19 @@ DAG_RUN_DB_NAME = "dwh"
 DAG_RUN_DB_USER = "dwh"
 DAG_RUN_DB_PASSWORD = "dwh"
 
-CLOUD_RECORD_LIMIT = 5;
+CLOUD_RECORD_LIMIT = 5
 
-dag_offload_olap_default_args = {
+dag_offload_default_args = {
     "retries": 1,
     "retry_delay": 5,
 }
 
 @dag(
-    dag_id="offload_olap",
+    dag_id="offload_medical_data",
     start_date=datetime(2026, 1, 1),
     schedule=timedelta(days=1),
     catchup=False,
-    default_args=dag_offload_olap_default_args,
+    default_args=dag_offload_default_args,
 )
 def Offload_OLAP():
     # Download Files vanaf de FTP Server
