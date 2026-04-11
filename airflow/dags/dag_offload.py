@@ -1,6 +1,6 @@
 from airflow.providers.ftp.operators.ftp import FTPFileTransmitOperator, FTPOperation
 from datetime import datetime, timedelta
-from airflow.sdk import dag, task
+from airflow.sdk import dag, task, task_group
 from olap_offload_processor import OLAPOffloadProcessor
 from decimal import *
 from bigquery_offload_processor import BigQueryOffloadProcessor
@@ -41,88 +41,102 @@ dag_offload_default_args = {
     default_args=dag_offload_default_args,
 )
 def Offload_OLAP():
-    # Download Files vanaf de FTP Server
-    download_task = FTPFileTransmitOperator(
-        task_id="download_medical_data_from_ftp",
-        ftp_conn_id="ftp_server",
-        local_filepath=[                            # path in container met bind volume waar raw data naar gedownload zal worden
-            "data/medical_data/Countries.csv",
-            "data/medical_data/Diagnosis.csv",
-            "data/medical_data/Indications.csv",
-            "data/medical_data/Institutions.csv",
-            "data/medical_data/Outpatient_Registrations.csv",
-            "data/medical_data/Outpatient_Treatments.csv",
-            "data/medical_data/Subregions.csv",
-            "data/medical_data/Surveys.csv",
-            "data/medical_data/Unit_Registrations.csv"
-        ],
-        remote_filepath=[                           # path op ftp server met file die raw data bevat om gedownload te worden
-            "outbound/medical_input_data/Countries.csv",
-            "outbound/medical_input_data/Diagnosis.csv",
-            "outbound/medical_input_data/Indications.csv",
-            "outbound/medical_input_data/Institutions.csv",
-            "outbound/medical_input_data/Outpatient_Registrations.csv",
-            "outbound/medical_input_data/Outpatient_Treatments.csv",
-            "outbound/medical_input_data/Subregions.csv",
-            "outbound/medical_input_data/Surveys.csv",
-            "outbound/medical_input_data/Unit_Registrations.csv"
-        ],
-        operation=FTPOperation.GET,
-        create_intermediate_dirs=True,
-    )
 
-    @task()
-    def offload_to_dwh_database():
-        olap_offload_processor = OLAPOffloadProcessor(
-            FILE_TREATMENTS,
-            FILE_PATIENTS,
-            FILE_SUBREGIONS,
-            FILE_COUNTRIES,
-            FILE_SURVEYS,
-            FILE_INSTITUTIONS,
-            FILE_UNIT_REGISTRATIONS,
-            DAG_RUN_DB_HOST,
-            DAG_RUN_DB_PORT,
-            DAG_RUN_DB_NAME,
-            DAG_RUN_DB_USER,
-            DAG_RUN_DB_PASSWORD
+    @task_group(group_id='ftp_tasks')
+    def run_ftp_uploads():
+        # Download Files vanaf de FTP Server
+        download_task = FTPFileTransmitOperator(
+            task_id="download_medical_data_from_ftp",
+            ftp_conn_id="ftp_server",
+            local_filepath=[                            # path in container met bind volume waar raw data naar gedownload zal worden
+                "data/medical_data/Countries.csv",
+                "data/medical_data/Diagnosis.csv",
+                "data/medical_data/Indications.csv",
+                "data/medical_data/Institutions.csv",
+                "data/medical_data/Outpatient_Registrations.csv",
+                "data/medical_data/Outpatient_Treatments.csv",
+                "data/medical_data/Subregions.csv",
+                "data/medical_data/Surveys.csv",
+                "data/medical_data/Unit_Registrations.csv"
+            ],
+            remote_filepath=[                           # path op ftp server met file die raw data bevat om gedownload te worden
+                "outbound/medical_input_data/Countries.csv",
+                "outbound/medical_input_data/Diagnosis.csv",
+                "outbound/medical_input_data/Indications.csv",
+                "outbound/medical_input_data/Institutions.csv",
+                "outbound/medical_input_data/Outpatient_Registrations.csv",
+                "outbound/medical_input_data/Outpatient_Treatments.csv",
+                "outbound/medical_input_data/Subregions.csv",
+                "outbound/medical_input_data/Surveys.csv",
+                "outbound/medical_input_data/Unit_Registrations.csv"
+            ],
+            operation=FTPOperation.GET,
+            create_intermediate_dirs=True,
         )
-        olap_offload_processor.start_offload()
 
-    @task()
-    def offload_to_mongodb():
-        documentdb_offload_processor = DocumentDBOffloadProcessor(
-            FILE_TREATMENTS,
-            FILE_PATIENTS,
-            FILE_SUBREGIONS,
-            FILE_COUNTRIES,
-            FILE_SURVEYS,
-            FILE_INSTITUTIONS,
-            FILE_UNIT_REGISTRATIONS,
-            DAG_RUN_MONGODB_HOST,
-            DAG_RUN_MONGODB_PORT,
-            DAG_RUN_MONGODB_USER,
-            DAG_RUN_MONGODB_PASSWORD
-        )
-        documentdb_offload_processor.offload_medical_data_to_documentdb()
+        download_task
 
-    @task()
-    def offload_to_bigquery():
-        # LOCAL RUN: 
-        # os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/home/jkeustermans/JOpleiding/Data-Engineering/Project/airflow/data/keys/google_jkeustermans_key.json'
+    @task_group(group_id='offload_local')
+    def run_local_offloads():
+        @task()
+        def offload_to_dwh_database():
+            olap_offload_processor = OLAPOffloadProcessor(
+                FILE_TREATMENTS,
+                FILE_PATIENTS,
+                FILE_SUBREGIONS,
+                FILE_COUNTRIES,
+                FILE_SURVEYS,
+                FILE_INSTITUTIONS,
+                FILE_UNIT_REGISTRATIONS,
+                DAG_RUN_DB_HOST,
+                DAG_RUN_DB_PORT,
+                DAG_RUN_DB_NAME,
+                DAG_RUN_DB_USER,
+                DAG_RUN_DB_PASSWORD
+            )
+            olap_offload_processor.start_offload()
+
+        @task()
+        def offload_to_mongodb():
+            documentdb_offload_processor = DocumentDBOffloadProcessor(
+                FILE_TREATMENTS,
+                FILE_PATIENTS,
+                FILE_SUBREGIONS,
+                FILE_COUNTRIES,
+                FILE_SURVEYS,
+                FILE_INSTITUTIONS,
+                FILE_UNIT_REGISTRATIONS,
+                DAG_RUN_MONGODB_HOST,
+                DAG_RUN_MONGODB_PORT,
+                DAG_RUN_MONGODB_USER,
+                DAG_RUN_MONGODB_PASSWORD
+            )
+            documentdb_offload_processor.offload_medical_data_to_documentdb()
         
-        bigquery_offload_processor = BigQueryOffloadProcessor(
-            DAG_RUN_DB_HOST, 
-            DAG_RUN_DB_PORT, 
-            DAG_RUN_DB_NAME, 
-            DAG_RUN_DB_USER, 
-            DAG_RUN_DB_PASSWORD,
-            CLOUD_RECORD_LIMIT)
-        bigquery_offload_processor.start_offload()
+        offload_to_dwh_database()
+        offload_to_mongodb()
 
-    # local run
-    # offload_to_bigquery()
+    @task_group(group_id='offload_cloud')
+    def run_cloud_offload():
+        @task()
+        def offload_to_bigquery():
+            # LOCAL RUN: 
+            # os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/home/jkeustermans/JOpleiding/Data-Engineering/Project/airflow/data/keys/google_jkeustermans_key.json'
+            
+            bigquery_offload_processor = BigQueryOffloadProcessor(
+                DAG_RUN_DB_HOST, 
+                DAG_RUN_DB_PORT, 
+                DAG_RUN_DB_NAME, 
+                DAG_RUN_DB_USER, 
+                DAG_RUN_DB_PASSWORD,
+                CLOUD_RECORD_LIMIT)
+            bigquery_offload_processor.start_offload()
+        
+        offload_to_bigquery()
 
-    download_task >> offload_to_dwh_database() >> offload_to_mongodb() >> offload_to_bigquery()
+        # local run
+        # offload_to_bigquery()
+
+    run_ftp_uploads() >> run_local_offloads() >> run_cloud_offload()
 
 olap_offload_dag = Offload_OLAP()

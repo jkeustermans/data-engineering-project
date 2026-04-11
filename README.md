@@ -350,6 +350,14 @@ TODO: beschrijving analyse
 	- Maak een nieuwe image aan voor Apache Airflow
 - Implementatie code in Airflow
 	- Resource: https://blog.coupler.io/how-to-crud-bigquery-with-python/
+- Testscenario:
+	- Omwille van het feit dat je op een free tier zit zijn de mogelijkheden erg beperkt
+	- Om een volledig testscenario te runnen vanaf scratch (zonder data, enkel tabellen):
+	- Run het DDL_Setup.sql script onder de cloud directory in Google BigQuery
+	- Er wordt een drop gedaan van alle tabellen om vervolgens de tabellen opnieuw aan te maken
+	- Run de DAG in Apache Airflow
+	- In het bestand Queries.txt onder de cloud directory staan voorbeeld queries voor het bekijken van de data
+	- Merk op dat er slechts 5 records worden doorgestuurd naar BigQuery (data privacy & limitatie van data transfer op GCP Free-Tier)
 ### MongoDB
 	- Connecteren: docker exec -it <container-id> bash
 	- Aanloggen op MongoDB: mongosh mongodb://test:test@mongodb:27017

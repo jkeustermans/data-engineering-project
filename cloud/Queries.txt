@@ -1,0 +1,7 @@
+SELECT * FROM `upbeat-isotope-142823.pps.dim_patient`;
+SELECT * FROM `upbeat-isotope-142823.pps.dim_geographic`;
+SELECT * FROM `upbeat-isotope-142823.pps.dim_survey`;
+SELECT * FROM `upbeat-isotope-142823.pps.dim_department`;
+SELECT * FROM `upbeat-isotope-142823.pps.dim_diagnosis`;
+SELECT * FROM `upbeat-isotope-142823.pps.dim_indication`;
+SELECT * FROM `upbeat-isotope-142823.pps.fact_treatments`;
