@@ -350,6 +350,14 @@ TODO: beschrijving analyse
 	- Maak een nieuwe image aan voor Apache Airflow
 - Implementatie code in Airflow
 	- Resource: https://blog.coupler.io/how-to-crud-bigquery-with-python/
+### MongoDB
+	- Connecteren: docker exec -it <container-id> bash
+	- Aanloggen op MongoDB: mongosh mongodb://test:test@mongodb:27017
+		- Gebruiker: test, password: test
+	- Database gebruiken: use pps
+	- Aanmaak collection: db.createCollection("medical_documents")
+	- Doorzoeken collection: db.medical_documents.find()
+	- Verwijderen alle documenten: db.medical_records.remove({})
 
 ## Journal
 ### Week 16 feb
@@ -561,8 +569,13 @@ TODO: beschrijving analyse
 	- Implementeren documentdb_offload_processor
 	- Testen initiële implementatie
 	- Regressietesten DAG Processing
+- Integreren logica offload in MongoDB in Apache Airflow
+	- Implementeren
+	- Refactoring/Optimalisatie code
+	- Testen
 - Doornemen literatuur
-	- AI Agents and Applications - With LangChain, LangGraph and MCP
+	- AI Agents and Applications - With LangChain, LangGraph and MCP (boek)
+	- Parallel and Sequential Tasks Topology in the Airflow Task Paradigm (artikel)
 
 ## Geraadpleegde bronnen
 ### Boeken
@@ -606,6 +619,8 @@ TODO: beschrijving analyse
 - SQLAlchemy Tutorial With Examples
 	- https://www.datacamp.com/tutorial/sqlalchemy-tutorial-examples
 	- Status: gelezen
+- Parallel and Sequential Tasks Topology in the Airflow Task Paradigm
+	- https://medium.com/thedeephub/parallel-and-sequential-tasks-topology-in-the-airflow-task-flow-paradigm-0855d619799f
 - Apache Airflow
 	- https://airflow.apache.org/docs/apache-airflow/stable
 - Pandas documentation

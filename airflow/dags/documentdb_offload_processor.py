@@ -101,23 +101,23 @@ class DocumentDBOffloadProcessor:
         self.mongoDao.persist_dataframe_to_medical_documents_collection(dataframe)
 
 
-LOCAL_RUN_MONGODB_HOST = "localhost"
-LOCAL_RUN_MONGODB_PORT = 27017
-LOCAL_RUN_MONGODB_USER = "test"
-LOCAL_RUN_MONGODB_PASSWORD = "test"
+# LOCAL_RUN_MONGODB_HOST = "localhost"
+# LOCAL_RUN_MONGODB_PORT = 27017
+# LOCAL_RUN_MONGODB_USER = "test"
+# LOCAL_RUN_MONGODB_PASSWORD = "test"
 
-local_processor = DocumentDBOffloadProcessor(
-    FILE_TREATMENTS_LOCAL_RUN,
-    FILE_PATIENTS_LOCAL_RUN,
-    FILE_SUBREGIONS_LOCAL_RUN,
-    FILE_COUNTRIES_LOCAL_RUN,
-    FILE_SURVEYS_LOCAL_RUN,
-    FILE_INSTITUTIONS_LOCAL_RUN,
-    FILE_UNIT_REGISTRATIONS_LOCAL_RUN,
-    LOCAL_RUN_MONGODB_HOST,
-    LOCAL_RUN_MONGODB_PORT,
-    LOCAL_RUN_MONGODB_USER,
-    LOCAL_RUN_MONGODB_PASSWORD
-)
+# local_processor = DocumentDBOffloadProcessor(
+#     FILE_TREATMENTS_LOCAL_RUN,
+#     FILE_PATIENTS_LOCAL_RUN,
+#     FILE_SUBREGIONS_LOCAL_RUN,
+#     FILE_COUNTRIES_LOCAL_RUN,
+#     FILE_SURVEYS_LOCAL_RUN,
+#     FILE_INSTITUTIONS_LOCAL_RUN,
+#     FILE_UNIT_REGISTRATIONS_LOCAL_RUN,
+#     LOCAL_RUN_MONGODB_HOST,
+#     LOCAL_RUN_MONGODB_PORT,
+#     LOCAL_RUN_MONGODB_USER,
+#     LOCAL_RUN_MONGODB_PASSWORD
+# )
 
-local_processor.offload_medical_data_to_documentdb()
+# local_processor.offload_medical_data_to_documentdb()
