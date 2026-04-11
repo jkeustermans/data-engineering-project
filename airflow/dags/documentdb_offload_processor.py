@@ -1,10 +1,13 @@
 from constants import *
+import pandas as pd
 from csv_reader import CSVReader
+from mongodb_dao import MongoDBDAO
 
 class DocumentDBOffloadProcessor:
 
     def __init__(self, input_csv_treatments, input_csv_patients, input_csv_subregions, input_csv_countries, 
-                 input_csv_surveys, input_csv_institutions, input_csv_unit_registration):
+                 input_csv_surveys, input_csv_institutions, input_csv_unit_registration,
+                 host, port, user, password):
         self.csv_reader = CSVReader(
             input_csv_treatments,
             input_csv_patients,
@@ -14,8 +17,13 @@ class DocumentDBOffloadProcessor:
             input_csv_institutions,
             input_csv_unit_registration
         )
+        self.mongoDao = MongoDBDAO(host, port, user, password)
 
-    def retrieve_fully_flat_linked_dataset(self):
+    def offload_medical_data_to_documentdb(self):
+        dataframe = self.__retrieve_fully_flat_linked_dataset()
+        self.__write_csv_content_to_mongodb(dataframe)
+
+    def __retrieve_fully_flat_linked_dataset(self):
         df_treatments = self.csv_reader.read_treatments_from_input_csv()
         df_patients = self.csv_reader.read_patients_from_input_csv()
         df_surveys = self.csv_reader.read_surveys_from_input_csv()
@@ -88,7 +96,16 @@ class DocumentDBOffloadProcessor:
             'institution_sub_region_code',
             'institution_sub_region_name'
         ]]
-    
+
+    def __write_csv_content_to_mongodb(self, dataframe: pd.DataFrame):
+        self.mongoDao.persist_dataframe_to_medical_documents_collection(dataframe)
+
+
+LOCAL_RUN_MONGODB_HOST = "localhost"
+LOCAL_RUN_MONGODB_PORT = 27017
+LOCAL_RUN_MONGODB_USER = "test"
+LOCAL_RUN_MONGODB_PASSWORD = "test"
+
 local_processor = DocumentDBOffloadProcessor(
     FILE_TREATMENTS_LOCAL_RUN,
     FILE_PATIENTS_LOCAL_RUN,
@@ -96,8 +113,11 @@ local_processor = DocumentDBOffloadProcessor(
     FILE_COUNTRIES_LOCAL_RUN,
     FILE_SURVEYS_LOCAL_RUN,
     FILE_INSTITUTIONS_LOCAL_RUN,
-    FILE_UNIT_REGISTRATIONS_LOCAL_RUN
+    FILE_UNIT_REGISTRATIONS_LOCAL_RUN,
+    LOCAL_RUN_MONGODB_HOST,
+    LOCAL_RUN_MONGODB_PORT,
+    LOCAL_RUN_MONGODB_USER,
+    LOCAL_RUN_MONGODB_PASSWORD
 )
 
-df_merged = local_processor.retrieve_fully_flat_linked_dataset()
-print(len(df_merged))
+local_processor.offload_medical_data_to_documentdb()
