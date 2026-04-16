@@ -5,5 +5,8 @@ USER airflow
 RUN pip install psycopg[binary]
 RUN pip install pymongo
 RUN pip install google-cloud-BigQuery
+RUN pip install matplotlib
+RUN pip install seaborn
+RUN pip install PyQt5
 
 USER airflow

@@ -14,6 +14,8 @@ FILE_SURVEYS = "data/medical_data/Surveys.csv"
 FILE_INSTITUTIONS = "data/medical_data/Institutions.csv"
 FILE_UNIT_REGISTRATIONS = "data/medical_data/Unit_Registrations.csv"
 
+DIR_ANALYSIS_OUTPUT = "data/analysis/output"
+
 DAG_RUN_DB_HOST = "dwh"
 DAG_RUN_DB_PORT = 5432
 DAG_RUN_DB_NAME = "dwh"
