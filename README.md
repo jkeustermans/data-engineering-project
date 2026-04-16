@@ -327,6 +327,13 @@ TODO: beschrijving analyse
 		- https://docs.vultr.com/python/third-party/pandas/DataFrame/to_json
 	- Basis data manipulatie MongoDB & Python
 		- https://www.geeksforgeeks.org/mongodb/mongodb-python-insert-update-data/
+- Toevoegen Python dependencies aan image
+	- Ga naar Airflow dir
+	- Breng Airflow down (docker compose down)
+	- Voeg pip install instructies toe aan Dockerfile
+	- Doe docker build voor nieuwe image te maken (docker build .)
+	- Start Airflow (docker compose up -d)
+
 ### Google BigQuery
 - Opzet project in Google Cloud workspace
 	- Link: https://cloud.google.com/
@@ -584,6 +591,13 @@ TODO: beschrijving analyse
 - Doornemen literatuur
 	- AI Agents and Applications - With LangChain, LangGraph and MCP (boek)
 	- Parallel and Sequential Tasks Topology in the Airflow Task Paradigm (artikel)
+
+### Week 13 april
+- Implementeren analyse & visualisatie dataset
+	- Analyze dataset
+	- Visualiseren via Seaborn
+	- Generatie outputbestanden (PNG-files voor grafieken, txt voor beschrijving dataset)
+- Aanpassing docker image Airflow voor toevoegen libraries visualisatie (matplotlib, seaborn, PyQt5)
 
 ## Geraadpleegde bronnen
 ### Boeken
