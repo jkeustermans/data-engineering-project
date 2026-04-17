@@ -2,6 +2,7 @@
 ## Inhoudstafel
 - Inleidend
 - Plan van aanpak
+- Functionele beschrijving (High-Level)
 - Architecturaal
 	- Algemeen
 	- Beschrijving architectuur
@@ -29,6 +30,7 @@
 	- Google BigQuery
 	- MogoDB
 - Journal
+- Reflectie Projectopdracht
 - Geraadpleegde bronnen
 
 ## Inleidend
@@ -51,6 +53,21 @@ Opmerking: om de tekst niet al te zwaar te maken zullen in dit document de meest
 
 ## Plan van aanpak
 In eerste instantie had ik een 4-tal fases gedefinieerd die ik zou volgen, startende met een eenvoudige Docker setup. Echter tijdens de ontwikkeling van bedrijfsprojecten wordt meestal in het begin van het project een aantal use cases geïdentificeerd die als risicovol worden aanzien. Deze worden dan reeds in de Elaboration Phase ontwikkeld zodat de risico's zo snel mogelijk gemitigeerd kunnen worden (of indien nodig, kan men vooraan het ontwikkelproces de nodige aanpassingen/alternatieven voorzien). Daarom heb ik besloten om een aantal technische integraties behorende tot de minimale opzet naar het begin van het ontwikkelproces te verplaatsen. Het gevolg is dat Apache Airflow naar het begin van het ontwikkelproces is getrokken.
+
+## Functionele beschrijving (High-Level)
+De nadruk in dit project ligt op het opstellen van een ETL (en een Reverse ETL) Proces dat uitgevoerd zal worden door een Orchestrator library. Binnen deze orchestrator zal de workflow gedefinieerd worden (in de vorm van een Directed Acyclic Graph) die bestaat uit een aantal Tasks die onderling afhankelijk zijn. Deze Tasks zijn onderverdeeld in TaskGroups die toelaten om bepaalde Tasks in Parallel uit te voeren. In grote lijnen kan de verwerking als volgt worden omschreven:
+- Negen CSV bestanden staan bijwijze van vertrekpunt klaar in de Outbounds map op de FTP Server
+- De orchestrator zal dagelijks (of manueel) een DAG opstarten die de verwerking zal uitvoeren
+- De eerste Task van de flow zal de CSV bestanden van de FTP Downloaden naar het lokale filesysteem van Airflow zodat Airflow Workers deze bestanden kunnen accessen
+- Vervolgens wordt de eerste TaskGroup uitgevoerd waarbij er 2 parallelle processen worden uitgevoerd:
+	- Task 1: het uitlezen van de CSV bestanden, deze in een gedenormalizeerd model gieten (Kimball) en persisteren naar een Datawarehouse
+	- Task 2: het uitlezen van de CSV bestanden, deze in document-formaat gieten en vervolgens persisteren naar een document database
+- Als deze TaskGroup afgerond is dan wordt de volgende TaskGroup opgestart die tevens bestaat uit 2 taken:
+	- Task 1: uitlezen Datawarehouse model en dit OLAP model identiek persisteren naar een Google BigQuery database
+	- Task 2: Reverse ETL: analyze van de datasets, generatie van grafieken in PNG bestanden, korte analyse van gehele dataset in CSV formaat gieten en alles terug uploaden naar de Inbounds folder op de FTP server
+
+Schematisch voorgesteld:
+TODO: toevoegen DAG afbeelding Airflow
 
 ## Architecturaal
 ### Algemeen
@@ -261,9 +278,45 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 	- Meestal wordt een processing gescheduled als zijnde een verwerking die met een bepaalde frequentie plaatsvindt (vb. elke nacht)
 - De Orchestrator zal Python classes aanspreken die dan de effectieve logica van de verwerking bevat. Tevens zal de Orchestrator zelf ook bepaalde access abstraheren (vb. connectie naar FTP Server) zodat bijvoorbeeld Datasources in Airflow zelf gedefinieerd kunnen worden
 	- Er is gebruik gemaakt van constructor injection zodat de meeste Python classes technologisch onafhankelijk blijven van Airflow (Design Pattern)
-
+- Concrete Flow:
+	- Aanmaak DAG met verschillende Tasks en TaskGroups in Airflow
+	- Scheduling: elke dag zal DAG draaien
+	- Proces:
+		- Download CSV bestanden vanuit de FTP Server
+		- Deze worden lokaal opgeslagen
+		- Persisteren gebeurt voor elke database via een eigen Python OffloadProcessor class die opgeroepen wordt vanuit de DAG-Offload Python code waar de DAG volledig gedefinieerd wordt
+		- Persisteren naar Datawarehouse
+			- Uitlezen van deze bestanden via Pandas library naar dataframes
+			- Persisteren van de data gebeurt op verschillende manieren (louter om educatieve redenen)
+				- Via Pandas link naar Database
+				- Via Psycopg adapter
+				- Via SQLAlchemy library
+		- Persisteren naar MongoDB
+			- Uitlezen data uit Datawarehouse
+			- Linken datasets via Pandas dataframes
+			- Inserts via PyMongo adapter
+		- Persisteren naar Google BigQuery
+			- Uitlezen data vanuit Datawarehouse naar Pandas dataframes
+			- Persisteren gaat via de Google Cloud BigQuery library
+			- Persisteren gebeurt via LoadJob
+			- Beperkingen op Google Cloud Processing
+			- Enkel de eerste 5 elementen van elk dataframe worden weggeschreven
+				- Reden: free tier -> trage processing en beperkingen
+		- Analyse van datasets (REVERSE ETL)
+			- DataAnalyzer Python class
+			- Genereren meerdere grafieken
+				- ATC3 categorieën (tellingen per ATC3 category) (barchart)
+				- Prescription Types (tellingen per type) (barchart)
+				- Intended Duration per ATC3 category (boxplot)
+				- Patient Gender (categorie) (barchart)
+				- Patient Weights (bins) (histogram)
+				- Algemene analyse dataset (text content) (csv)
+			- Deze bestanden worden vanuit Airflow geupload naar de FTP Server (Reverse ETL)
+	- Er zijn TaskGroups die Tasks bevatten die parallel zullen uitgevoerd worden
+	
 ### Datawarehouse
 - Er zal een klassieke RDBMS worden gebruikt die dienst zal doen als Datawarehouse
+	- PostgreSQL
 - Consumers: Data Scientists
 - Deze zal data bevatten die gedenormalizeerd is
 - Er is binnen deze context geopteerd voor Kimball te gebruiken
@@ -276,6 +329,7 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 
 ### Google Cloud (BigQuery)
 - Deze database zal als Cloud Database fungeren
+- OLAP model in DWH wordt identiek gerepliceerd naar BigQuery
 - Consumers: externe partners
 - De cloud lijkt een interessante oplossing omdat BigQuery direct geïntegreerd kan worden met allerlei tooling, zowel klassieke reporting tooling als Looker Studio, als Machine Learning Tooling (Vertex AI)
 	- Looker Studio = maken van dashboards (grafieken en tabellen). Vergelijkbaar met Power BI, Tableau
@@ -722,6 +776,48 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 	- Generatie outputbestanden (PNG-files voor grafieken, txt voor beschrijving dataset)
 - Aanpassing docker image Airflow voor toevoegen libraries visualisatie (matplotlib, seaborn, PyQt5)
 - Uitbreiden technische documentatie
+- Tekenen Architectuur diagrammen
+	- Current Architecture
+	- Final Target Architecture
+- Reflecteren over opdracht (en documenteren bevindingen)
+
+## Reflectie Projectopdracht
+- Manier van werken:
+	- Ik heb zo weinig mogelijk AI trachten te gebruiken
+		- Reden: in een leerfase denk ik dat je meer zaken opsteekt als je zelf zaken dient uit te zoeken
+		- Ik heb wel regelmatig AI in traditionele vorm gebruikt (vragen stellen via browser)
+		- Voor het data governance luik heb ik literatuur doorgenomen. Daarna aan AI gevraagd om alle belangrijke punten op te lijsten. Daarna verder aangevuld met eigen kennis en laten evalueren (iteratief proces)
+		- Voor het OLAP datamodel heb ik een model opgesteld en daarna laten evalueren door AI (iteratief proces)
+		- Voor de MCP code heb ik code via AI laten genereren
+- Moeilijke punten:
+	- Data Engineering landschap verkennen en weg vinden in uitgebreid landschap:
+		- Veel soorten technologieën
+		- Diverse architecturen
+		- Cloud technologieën zijn ook erg uitgebreid
+	- Bijkomende zaken als Data Governance & Data Privacy die hun eigen complexiteit met zich meebrengen gaande van zaken als data lineage tot data inference, adertjes onder het gras als Data Provider inzake reponsabiliteit,...
+	- Google BigQuery: workarounds omdat free tier niet alles toe laat (vb. alles dient in een batch uitvoer te gebeuren, bepaalde DDL kan niet,...)
+	- Airflow verkennen (Operators & combinatie FTP connectie als resource in Airflow - versie verschil leidde tot moeilijkheid)
+	- Modellering: Kimball & Data Vault
+		- Data Vault kwam verwarrend over
+		- Kimball is erg uitgebreid
+		- Opzet uitgetekend en AI als sparring partner gebruikt
+	- Integratie van veel technologieën -> vele libraries met elk hun eigen syntax -> lastig om alles te blijven onthouden
+	- AI: alles lijkt een moving target, niet enkel technologieën maar ook manier van werken (vb. manier van werken AI vs Traditioneel)
+	- Experiment: MCP naar PostgreSQL lukte niet echt, vragen in natuurlijke taal stellen werkte niet echt goed
+- Verbeterpunten
+	- Security: passwords in docker compose files
+	- Security: SFTP
+	- Misschien dat er in de data modellering nog wel zaken verbeterd kunnen worden
+	- Docker compose files zullen hier en daar wel verder geoptimaliseerd kunnen worden vermoed ik
+	- Race conditions als er meerdere workers zijn die bijvoorbeeld files willen accessen op het filesystem
+- To Do
+	- Verder uitwerken target architectuur (iteratief)
+	- Verder verdiepen in Apache Airflow (en alternatieven)
+	- Verder verdiepen in Cloud technologieën
+	- Data Modellering: Kimball en Data Vault verder bestuderen
+	- Bekijken semantische modellen
+	- Verder verdiepen in AI en de integratie met Data Engineering (LLMs, Agents, MLOps,...)
+	- Verder verdiepen in data privacy en compliancy aspecten (GDPR & AI Act)
 
 ## Geraadpleegde bronnen
 ### Boeken
@@ -737,6 +833,8 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 	- Status: aan het doornemen
 - AI Agents and Applications - With LangChain, LangGraph and MCP (Robert Infante - 2026)
 	- Status: aan het doornemen
+- Data Governance: The Definitive Guide (Evren Eryurek - 2021)
+	- Status: volledig gelezen
 ### Internet Resources (hoofdartikels)
 - What is a Data Lake? Definition, Architecture, and Use Cases
 	- https://www.datacamp.com/blog/what-is-a-data-lake
