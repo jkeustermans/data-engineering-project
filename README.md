@@ -9,6 +9,7 @@
 		- Architectuur
 	- Patronen
 		- Datawarehouse architectuur
+		- Methode van Kimball
 		- Orchestration
 - Technisch Ontwerp
 	- Staging Area
@@ -16,18 +17,40 @@
 	- Datawarehouse
 	- Document Database
 	- Google Cloud
+- Data Model
+	- Landingzone
+		- Structuur Datamodel
+		- Beschrijving Datamodel
+	- Datawarehouse/OLAP Model
+		- Structuur model
 - Implementation
 	- FTP Server
 	- Apache Airflow
+	- Google BigQuery
+	- MogoDB
 - Journal
 - Geraadpleegde bronnen
 
 ## Inleidend
-Dit is een 'Work In Progress'-document en zal aan veranderingen onderhevig zijn. Bedoeling van dit document is om een high-level overzicht te geven van de technische opzet van het project. Tevens zullen er secties opgenomen worden waarin de progressie van het project beschreven wordt (zie sectie Journal). Dit zal twee aspecten bevatten, enerzijds de activiteiten inzake de geïmplementeerde code & configuratie met wat technische duiding, anderzijds het verloop van de opzet. Het laatste aspect dient inzicht te geven in de aanpak, welke concepten tegengekomen zijn, wat de moeilijkere aspecten waren en tenslotte bronverwijzingen.
-Om de tekst niet al te zwaar te maken zullen de meeste zaken als bullet points genoteerd worden.
+Bedoeling van dit document is om een high-level overzicht te geven van de technische opzet van het project op verschillende niveaus. De niveaus die beschreven worden zijn:
+- Architectuur
+- Technisch Ontwerp
+- Data Model
+- Implementatie
+
+Er zal tevens een sectie opgenomen worden waarin de progressie van het project beschreven wordt (zie sectie Journal). Dit dient een chronologisch beeld te geven welke activiteiten er hebben plaatsgevonden. 
+Het laatste deel van dit document zal nog twee extra zaken bevatten:
+- Een (ruwe) architectuur van het systeem zoals het in de praktijk ontwikkeld zou kunnen worden. Immers het project zoals het voor dit opleidingsonderdeel ontwikkeld is geweest, is een (sterk) vereenvoudigde vorm van een project dat werkelijk geïmplementeerd zal worden
+- Reflectie over het project. Dit wil zeggen: hoe heb ik het aangepakt, wat zijn de dingen die ik geleerd heb, welke moeilijkheden ben ik tegengekomen, welke stukken zijn suboptimaal en dienen verbeterd te worden voor de reële implementatie,...
+
+Het document eindigt tenslotte met bronverwijzingen.
+
+Er zullen ook nog extra documenten toegevoegd worden die dieper ingaan op een aantal elementen mbt. de reële implementatie van het project. Ik beschouw dit als aparte analyses, vandaar dat deze in aparte documenten zijn opgenomen. Deze documenten beschrijven oa. een aantal kandidaat data-architecturen voor de reële implementatie van het project. Tevens bevatten deze de afwegingen die er gemaakt dienen te worden en wat de aandachtspunten zijn.
+
+Opmerking: om de tekst niet al te zwaar te maken zullen in dit document de meeste zaken als bullet points genoteerd worden.
 
 ## Plan van aanpak
-In eerste instantie had ik een 4-tal fases gedefinieerd die ik zou volgen, startende met een eenvoudige Docker setup. Echter tijdens de ontwikkeling van bedrijfsprojecten wordt meestal in het begin van het project een aantal use cases geïdentificeerd die als risicovol worden aanzien. Deze worden dan reeds in de elaboration phase ontwikkeld zodat de risico's zo snel mogelijk worden gemitigeerd (of indien nodig, kan men vooraan het ontwikkelproces nog de nodige aanpassingen/alternatieven voorzien). Daarom heb ik besloten om een aantal technische integraties behorende tot de minimale opzet naar het begin van het ontwikkelproces te verplaatsen. Het gevolg is dat Apache Airflow naar voor is getrokken.
+In eerste instantie had ik een 4-tal fases gedefinieerd die ik zou volgen, startende met een eenvoudige Docker setup. Echter tijdens de ontwikkeling van bedrijfsprojecten wordt meestal in het begin van het project een aantal use cases geïdentificeerd die als risicovol worden aanzien. Deze worden dan reeds in de Elaboration Phase ontwikkeld zodat de risico's zo snel mogelijk gemitigeerd kunnen worden (of indien nodig, kan men vooraan het ontwikkelproces de nodige aanpassingen/alternatieven voorzien). Daarom heb ik besloten om een aantal technische integraties behorende tot de minimale opzet naar het begin van het ontwikkelproces te verplaatsen. Het gevolg is dat Apache Airflow naar het begin van het ontwikkelproces is getrokken.
 
 ## Architecturaal
 ### Algemeen
@@ -46,18 +69,18 @@ De **vereenvoudigde** opzet zal bestaan uit een aantal componenten die via Docke
 	- Hier zullen bestanden op komen te staan die:
 		- De input gaan vormen voor het ELT proces om deze data te converteren naar de gewenste formaten
 		- Output bestanden die het resultaat zijn van bepaalde verwerkingen (Reverse ETL)
-	- Dit is erg relatief en men zou dit kunnen zien als een '(very) poor man's Datalake'
+	- Dit is erg relatief en men zou dit kunnen zien als 'a (very) poor man's Datalake'
 	- Een alternatief hiervoor zou het gebruik zijn van Apache Iceberg of Google dataproc op het Google Cloud Platform
-	- Nadelen FTP Server 'als datalake':
+	- Nadelen FTP Server 'als Datalake':
 		- Weinig ondersteuning voor data governance
 		- Geen fine-grained security
 		- Geen opslag van meta-data (geen data-lineage...)
 		- Geen mogelijkheid om queries uit te voeren om objecten/files op te zoeken
-	- FTP Server gebruiken als datalake kan dan ook al snel leiden tot een data swamp
+	- FTP Server gebruiken als Datalake kan dan ook al snel leiden tot een 'Data swamp'
 - Apache Airflow
 	- Orchestrator die het ELT proces voor zijn rekening neemt
 	- Zal bestanden ophalen van de FTP Server
-	- Vervolgens zal dit bestand verder in de flow worden verwerkt:
+	- Vervolgens zullen de bestanden verder in de flow verwerkt worden:
 		- Data Cleaning
 		- Data Transformation
 		- Data Enrichment
@@ -68,8 +91,8 @@ De **vereenvoudigde** opzet zal bestaan uit een aantal componenten die via Docke
 		- PostgreSQL Database (bevat de meta-data over de Apache Airflow opzet en concrete Flows)
 		- Redis
 - PostgreSQL
-	- Opgelet: dit is niet de Apache Airflow instance
-	- Deze database instance zal fungeren als een Datawarehouse
+	- Opgelet: dit is niet de database van de Apache Airflow instance
+	- Deze database instance zal fungeren als een 'Datawarehouse'
 	- Normaliter worden er hier technologieën gebruikt als Snowflake of Teradata. Echter de dataset is relatief klein en zodus zou PostgreSQL hiervoor dienen te volstaan
 	- Opmerking: ook in de specifieke realiteit van de onderzoeksgroep zal er hiervoor een RDBMS gebruikt worden. Twee redenen:
 		- De dataset is relatief klein
@@ -81,15 +104,17 @@ De **vereenvoudigde** opzet zal bestaan uit een aantal componenten die via Docke
 	- Er zal een data transfer gedaan worden naar een Cloud Database zodat externe partners Reporting/Analytics/AI-tooling in de Cloud kunnen loslaten op de gegevens
 	- In eerste instantie gaat de voorkeur van het project uit naar Google Cloud Storage & BigQuery
 		- Azure zou een alternatief kunnen vormen
-- MCP Servers (optioneel)
-	- Koppeling MCP server met datawarehouse
-	- TODO: zit in experimentele fase
-- Vector Database (Optioneel)
-	- Zou documenten kunnen bevatten mbt. het protocol en de tooling
-	- Zou gekoppeld kunnen worden aan een LLM (lokaal of in de cloud) zodat eindgebruikers van ziekenhuizen en externe partners vragen kunnen stellen
-	- RAG & LLM (Retrieval-Augmented Generation)
-- AI Agent systeem (optioneel)
-	- TO DO: dieper bekijken
+- De volgende ideeën zijn wegens tijdsgebrek beperkt gebleven tot de experimentele fase:
+	- MCP Servers (optioneel)
+		- Koppeling MCP server met datawarehouse
+		- Dit is wegens tijdsgebrek beperkt gebleven tot de experimentele fase (AI code generated)
+	- Vector Database (Optioneel)
+		- Zou documenten kunnen bevatten mbt. het protocol en de tooling
+		- Zou gekoppeld kunnen worden aan een LLM (lokaal of in de cloud) zodat eindgebruikers van ziekenhuizen en externe partners vragen kunnen stellen
+		- RAG & LLM (Retrieval-Augmented Generation)
+		- Ook dit is beperkt gebleven tot de experimentele fase
+	- AI Agent systeem (optioneel)
+		- Er is hier enkel literatuur omtrent doorgenomen (zie sectie 'Geraadpleegde bronnen')
 Opmerking: in het project draait alles op één host. In realiteit zal dit uiteraard verdeeld worden over meerdere hosts/clusters.
 ### Patronen
 Er zijn een aantal architecturale patronen die steeds terugkomen.
@@ -113,17 +138,75 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 - Er zijn verschillende manieren om data te modelleren in Datawarehouses.
 - Kimball vs Inmon vs Data-Vault
 	- Kimball
-		- Zal gebruik maken van gedenormaliseerde sterschema's
+		- Zal gebruik maken van gedenormaliseerde sterschema's (of snowflake schema's)
 		- Feiten-tabellen
 		- Dimensie-tabellen
-		- TODO: verder kort beschrijven
+		- Er zijn verschillende soorten dimensie-tabellen (Degenerated Dimensions, Junk Dimensions, Slowly Changing Dimensions,...)
 	- Inmon
 		- Datawarehouse zal genormaliseerde data bevatten
-		- TODO: verder kort beschrijven
+		- Access zal niet rechtstreeks op het Datawarehouse gebeuren maar op de Data Marts die gebouwd worden op de Datawarehouse
+			- Data Mart is een subset van de Datawarehouse specifiek aan één doel of afdeling binnen het bedrijf
 	- Data-Vault
 		- Mix tussen normalisatie en dimensioneel modeleren
-		- TODO: verder kort beschrijven
-
+		- Bevat verzameling gekoppelde tabellen die historische informatie bevat van processen
+		- Men maakt onderscheid tussen Hubs, Links en Satellites
+			- Hubs: Bevat alleen keys, geen beschrijvende data
+			- Links: vergelijkbaar met feitentabellen. Ze beschrijven de relaties die verschillende Hubs onderling hebben. Ze bevatten niet de feiten zelf
+			- Satellites: bevatten de dimensie-attributen en de feiten. Gekoppeld via Foreign Keys aan Links / Hubs
+#### Methode van Kimball
+- Datawarehouse bestaat uit stermodellen die de organisatie beschrijven
+- Stermodel heeft 2 soorten tabellen
+	- Dimensie-tabel: bevatten de context van de feiten
+	- Feiten-tabel: bevat de informatie die gemeten kan worden
+- Andere modellering dan deze die gebruikt wordt voor OLTP (genormaliseerd)
+- Kimball zal denormaliseren: staat dichter tegen de eindgebruikers en is makkelijker ondervraagbaar via BI tools
+- Tijdens het modelleerproces dient het grain niveau bepaald te worden = niveau van detail
+	- Als je een kleine grain neemt dan heb je enorm veel rijen met veel detail (kan veel resources vergen voor ondervraging)
+	- Als je een grote grain neemt dan zal je minder rijen hebben maar je kan ook minder informatie afleiden omdat je bepaalde informatie geaggregeerd hebt (vb. verkoop van verschillende items tot 1 order bedrag)
+- Dimensies
+	- Dimensie-tabel bevat een aantal attributen die een dimensie beschrijven (vb. gender van een patiënt)
+	- Het zijn platgeslagen tabellen
+	- Er wordt vaak gewerkt met datumdimensies (makkelijker om periodes te filteren)
+		- Kan extra zaken bevatten zoals het kwartaalnummer, weeknummer, boekjaar (in geval van gebroken boekjaren),...
+	- Meestal wordt het aantal dimensies per stermodel beperkt tot 7
+	- Er zijn een aantal soorten dimensies
+		- Slowly Changing Dimensions
+			- Attributen van een dimensie kunnen in de loop der tijd veranderen
+			- SCDs zijn een manier om hiermee om te gaan
+			- SCD Type 1
+				- Oude waarde wordt gewoonweg overschreven, er wordt geen historiek bijgehouden
+			- SCD Type 2
+				- Bij elke verandering van een attribuut wordt een nieuw record aangemaakt en het oude afgesloten (flag, ingangsdatum en einddatum)
+			- SCD Type 3
+				- Je houdt meerdere verschillende kolommen bij per attribute (vb. kolom voor vorige waarde en kolom voor huidige waarde)
+				- Makkelijker om te vergelijken (query blijft simpel)
+		- Conformed Dimensions
+			- Binnen een organisatie zullen er meerdere stermodellen zijn
+			- Het is good practice om een dimensie-matrix op te stellen om per proces te definiëren welke dimensies relevant zijn
+			- Sommige dimensies zal men over meerdere stermodellen willen gebruiken
+			- Deze dimensies kunnen generiek gemaakt worden zodat deze dan ook effectief over meerdere stermodellen gebruikt kunnen worden
+		- Junk Dimension
+			- Bevat elke combinatie van meerdere dimensies en is herleid tot 1 dimensie
+			- Je kan bepaalde combinaties van kolommen in je facts table uitsplitsen naar een Junk dimensie zodat je het aantal kolommen beperkt in je Facts table
+			- Dit zijn kolommen met lage cardinaliteit (anders zou het aantal combinaties snel explosief toenemen)
+			- Vb. combinatie: is-urgent, is-escalated, within-sla voor een bepaalde ticket
+		- Degenerate Dimension
+			- Een attribute dat geen aparte dimension zal vormen maar dat in de facts table blijft (vb. gewicht van een patiënt in ons model)
+	- Er zijn nog veel andere soorten dimensions geïdentificeerd door Kimball (zie boek Datawarehouse Toolkit voor meer details) 
+- Feiten
+	- Feiten zijn vaak numeriek en/of aggregeerbaar
+	- Feiten zijn een meetwaarden die meestal op de finale dashboards terecht komen (vb. KPI's)
+	- Feitentabel bevat tevens de foreign keys naar de dimensie tabellen
+	- Soorten feiten (belangrijk voor het gebruik ervan op dashboards)
+		- Additieve feiten: feiten die over alle dimensies op te tellen zijn (vb. absolute (verkoop)cijfers)
+		- Niet-Additieve feiten: kunnen niet zomaar opgeteld worden (vb. percentages)
+		- Semi-additieve feiten: kunnen over sommige dimensies opgeteld worden maar over anderen niet
+			- Voorbeeld: voorraad. Bij actuele voorraad kan men van product A zeggen dat er op dag 1 nog 10 stuks waren en op dag 2 nog slechts 8. Echter we mogen niet concluderen dat we 18 stuks op voorraad hebben. Maar stel dat we 2 soorten producten hebben A en B en dat we van elks 5 stuks hebben op een bepaalde datum. We mogen dan wel concluderen dat we in totaal 10 stuks op voorraad hebben. Maw. op dimensie datum zijn ze niet optelbaar maar op de dimensie Product wel.
+	- Verder zijn er soorten feiten'tabellen'
+		- Meeste feiten zijn gevolg van zaken die geregistreerd worden (vb. scan aan kassa = registratie aankoop)
+		- Accumulating snapshot: geeft de huidige status van de feiten weer maar feiten kunnen nog aan verandering onderhevig zijn
+			- Voorbeeld: men maakt een offerte voor de verkoop van een auto. Deze offerte wordt al dan niet een aankoop. Het bestaande aankoop-feitenrecord kan aangevuld worden met de effectieve aankoopdatum als de aankoop doorgaat
+		- Periodieke snapshot: je slaat gegevens over feitentabellen op met een bepaalde frequentie (snapshot). Er is een datumkey die de stand van zaken weergeeft op een bepaalde specifieke datum
 #### Orchestration
 - Om het ETL proces uit te voeren wordt er gebruik gemaakt van een Orchestration tool. Deze tool zal pipelines opzetten die een aantal systemen met mekaar in verbinding zal brengen. Uit sommige van deze systemen zal data geëxtraheerd worden om deze vervolgens te cleanen, transformeren, enrichen,... en op te slaan in een ander systeem. Een klassiek voorbeeld is het extraheren van data uit een OLTP RDBMS en deze te transformeren naar een gedenormalizeerde vorm die dan in een OLAP Database opgeladen/gepersisteerd zal worden.
 
@@ -150,60 +233,78 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 	- SQL/JSON-Files/... => Data Lake (Ruwe data, Batch, Streaming -> Bewerkte data) => Data Marts, Data Scientists => Rapportering
 	- Onderverdeling FTP (Folder structuur)
 	```
-		/Ruwe data 				/Bewerkte data
-			/Bron1					/Project1
-				/Tabel1					/Tabel1
-				/Tabel2					/Tabel2
-			/Bron2					/Project2
-				/Tabel1					/Tabel1
-				/Tabel2					/Tabel2
+		/Inbound 				/Outbound
+			/Bron1					/Bron1
+				/Databron1a				/Databron1a
+				/Databron1b				/Databron2b
+			/Bron2					/Bron2
+				/Databron2a				/Databron2a
+				/Databron2b				/Databron2b
 	```
-	- Enkel de sectie Bewerkte data wordt opengesteld voor anderen die dan deze data kunnen gebruiken
-	- Nota: voorzien we een mechanisme waar iedere file-upload wordt bewaard (met datum) voor debugging doeleinden (historiek)?
+	- De Inbound en Outbound folders zullen onderverdeeld worden in subfolders (conceptuele onderverdeling)
+		- Inbound = de data die zal geupload worden naar de FTP server
+			- Vb. de medical data files
+		- Outbound = de data die door andere processen (vb. Airflow) zal gedownload worden
+			- Vb. analyses die gebeurd zijn door bepaalde processen (vb. reverse ETL)
+- Merk op dat in een bedrijf wellicht een full-blown Datalake zal gebruikt worden ipv. een FTP server (er is wel een beperkte literatuur doorgenomen mbt. mogelijke technologieën - zie sectie 'Geraadpleegde bronnen').
 
 ### Orchestrator
 - Airflow zal het ETL proces aansturen dmv. het definiëren van flows via Directe Acyclic Graphs (DAGs)
+	- Definieert Workflows
+	- Definieert afhankelijkheden tussen taken
+	- Voert de jobs uit
+- Airflow zal er ook voor zorgen dat deze flows gemonitord kunnen worden en dat als er zich bepaalde gebeurtenissen voordoen in deze flows dat er dan bepaalde acties ondernomen worden (vb. een aantal retries in geval van failures)
 - Er wordt gebruik gemaakt van een aangepaste Docker container zodat er bepaalde Python libraries opgenomen zijn die in de DAG code gebruikt kunnen worden
-- TODO: verder uitschrijven
+- De DAG zal in Python classes/code beschreven worden
+	- Er zal gebruik gemaakt worden van Helper classes (vb. voor Data Access)
+- De Orchestrator zal op verschillende manieren geconfigureerd kunnen worden
+	- Meestal wordt een processing gescheduled als zijnde een verwerking die met een bepaalde frequentie plaatsvindt (vb. elke nacht)
+- De Orchestrator zal Python classes aanspreken die dan de effectieve logica van de verwerking bevat. Tevens zal de Orchestrator zelf ook bepaalde access abstraheren (vb. connectie naar FTP Server) zodat bijvoorbeeld Datasources in Airflow zelf gedefinieerd kunnen worden
+	- Er is gebruik gemaakt van constructor injection zodat de meeste Python classes technologisch onafhankelijk blijven van Airflow (Design Pattern)
 
 ### Datawarehouse
 - Er zal een klassieke RDBMS worden gebruikt die dienst zal doen als Datawarehouse
 - Consumers: Data Scientists
-- TODO: verder uitschrijven
+- Deze zal data bevatten die gedenormalizeerd is
+- Er is binnen deze context geopteerd voor Kimball te gebruiken
 
 ### Document Database
 - MongoDB zal fungeren als document store
 - Consumers: externe partners
-- TODO: verder uitschrijven
+- In het huidige project is er geopteerd om voor elke treatment 1 document te voorzien in de database
+- Er zijn verschillende manieren om hiermee om te gaan. Men zou ook kunnen geopteerd hebben om de treatment gerelateerde data op te slaan in aparte documenten en die dan te koppelen via keys.
 
 ### Google Cloud (BigQuery)
 - Deze database zal als Cloud Database fungeren
 - Consumers: externe partners
-- TODO: verder uitschrijven
+- De cloud lijkt een interessante oplossing omdat BigQuery direct geïntegreerd kan worden met allerlei tooling, zowel klassieke reporting tooling als Looker Studio, als Machine Learning Tooling (Vertex AI)
+	- Looker Studio = maken van dashboards (grafieken en tabellen). Vergelijkbaar met Power BI, Tableau
+	- VertexAI, BigQuery ML = voor Machine Learning doeleinden
+- Er wordt slechts een beperkt aantal records naar BigQuery weggeschreven omwille van restricties mbt. de free tier van GCP
 
 ## Data Model
 ### Landingzone
 #### Structuur datamodel
-Zoals eerder gesteld zal de landingzone een aantal CSV files bevatten die de data omspannen. Deze data is uit de OLTP database getrokken. De files volgen een bepaalde structuur die niet persé relationeel genormaliseerd is maar die een structuur zouden kunnen bevatten zoals datasets die aangeboden worden op het internet. De structuur is dus eerder bedoeld om in een educatief project te fungeren. Bedoeling is dat deze structuur getransformeerd zal worden (zie eerder).
+Zoals eerder gesteld zal de landingzone een aantal CSV files bevatten die de data omspannen. Deze data is uit de OLTP database getrokken. De files volgen een bepaalde structuur die niet persé relationeel genormaliseerd is maar die een structuur zouden kunnen bevatten zoals datasets die aangeboden worden op het internet. De structuur is dus eerder bedoeld om in een 'educatief project' te fungeren. Bedoeling is dat deze structuur getransformeerd zal worden (zie eerder).
 Schema van het datamodel:
 
 ![Datamodel landingzone](documentation/Datamodel-Landingzone.png)
 
-#### Verklaring datamodel
-Hieronder staat een oplijsting van de aanwezige datasets met een high-level verklaring:
+#### Beschrijving datamodel
+Hieronder staat een oplijsting van de aanwezige datasets met een high-level verklaring. Merk op dat het slechts om een subset van de werkelijke data gaat.
 - Institutions
 	- Bevat de hospitalen die deel hebben genomen aan bepaalde surveys. In dit geval gaat het om Outpatient Surveys. In deze tabel wordt een kleine dataset aan gegevens bijgehouden.
 	- Duiding Kolommen:
-		- Country-Code: in welk land is het instituut gevestigd
-		- Sub-Region-Code: in welke subregio in de wereld is het hospitaal gevestigd
-		- Subtype-Code: wat voor soort hospitaal is het (primair, secundair...)
+		- Country-Code: in welk land is het instituut/hospitaal gevestigd
+		- Sub-Region-Code: in welke subregio in de wereld is het instituut gevestigd
+		- Subtype-Code: wat voor soort instituut is het (primair hospitaal, secundair hospitaal,...)
 - Surveys
-	- Een hospitaal dat meedoet aan een Point-Prevalence-Survey zal een protocol volgen om op bepaalde tijdstippen (survey-date) de patiënten te monitoren en alle gegevens mbt. deze patiënt en zijn behandeling te registreren. Bedoeling is dat er een strikt protocol gevolgd wordt voor de data te verzamelen voor elke patiënt op de betreffende survey-date. Aan een Survey zullen dus onderzoekgegevens gekoppeld worden.
+	- Een instituut dat meedoet aan een Point-Prevalence-Survey zal een protocol volgen om op bepaalde tijdstippen (survey-date) de patiënten te monitoren en alle gegevens mbt. deze patiënt en zijn behandeling te registreren. Bedoeling is dat er een strikt protocol gevolgd wordt om de data te verzamelen voor elke patiënt op de betreffende survey-date. Aan een Survey zullen dus onderzoekgegevens gekoppeld worden.
 	- Duiding kolommen:
 		- Inquiry-Id: per jaar worden er een aantal inquiries uitgeschreven. Dit zijn periodes waarin er surveys kunnen gebeuren
 		- Institution-Id: de ID van het institution waarop de survey betrekking heeft
 - Unit-Registrations
-	- Er gebeuren registraties op bepaalde departementen van een hospitaal/medical care facility = Units. Patiënten waarvoor men registraties gaat doen zullen binnen een bepaalde Unit behandeld worden. Van deze Unit worden ook een aantal gegevens bijgehouden
+	- Er gebeuren registraties op bepaalde departementen van een instituut/medical care facility = Units. Patiënten waarvoor men registraties gaat doen zullen binnen een bepaalde Unit behandeld worden. Van deze Unit worden ook een aantal gegevens bijgehouden
 	- Duiding kolommen:
 		- Survey-ID: met welke survey is deze Unit-Registration gekoppeld
 		- Survey-Date: datum waarop de survey gebeurd binnen deze unit
@@ -217,7 +318,7 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 		- Age-group: wat is de leeftijdscategorie van de patiënt (neonaat, kind, volwassene)
 		- Gender: gender van de patiënt
 		- Weight: gewicht
-		- Birth-Weight: gewicht van een neonaat
+		- Birth-Weight: gewicht in geval van een neonaat
 		- Symptom-codes: codes voor symptomen dat de patiënt vertoond (1 of meerdere gescheiden van mekaar door een pipe)
 - Outpatient-Treatments
 	- Er gebeuren 2 soorten registraties:
@@ -234,12 +335,12 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 		- Therapy Duration: duur van de behandeling
 		- Diagnosis-Code: code van de gestelde diagnose (apart classificatiesysteem specifiek aan het project)
 		- Indication-Code: waar heeft de patiênt de infectie opgedaan (thuis, in het ziekenhuis,...)
-		- Reason in notes: staat de rede voor het toedienen van het antimicrobial in het dossier van de patiënt
-		- Reference Guideline Exists: is er een richtlijn aanwezig voor het gebruik van het verstrekte antimicrobial
-		- Drug According To Guideline: is het toegediende antimicrobial effectief volgens de richtlijn voor het gebruik ervan
-		- Dose According to Guideline: stemt de dosis die gegeven is overeen met de richtlijn
-		- Duration According to Guideline: stemt de duur van de behandeling overeen met de richtlijn
-		- ROA According to Guideline: is de manier van toedienen (oraal, parenteraal,...) volgens de richtlijn
+		- Reason in notes: staat de rede voor het toedienen van het antimicrobial in het dossier van de patiënt?
+		- Reference Guideline Exists: is er een richtlijn aanwezig voor het gebruik van het verstrekte antimicrobial?
+		- Drug According To Guideline: is het toegediende antimicrobial effectief volgens de richtlijn voor het gebruik ervan?
+		- Dose According to Guideline: stemt de dosis die gegeven is overeen met de richtlijn?
+		- Duration According to Guideline: stemt de duur van de behandeling overeen met de richtlijn?
+		- ROA According to Guideline: is de manier van toedienen (oraal, parenteraal,...) volgens de richtlijn?
 - Countries (ondersteuningstabel)
 	- Bevat code en naam van landen (institution refereert hiernaar)
 - Subregions (ondersteuningstabel)
@@ -247,9 +348,31 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 
 ### Datawarehouse/OLAP Model
 #### Structuur model
-TODO: beschrijving analyse
+- De data die hier betrokken is (voor meer details zie eerdere beschrijving van het model):
+	- Institution = instituut/hospitaal waar de PPS gebeurd is. Aan een institution is ook geografische informatie gelieerd (land en subregion)
+	- Survey = survey die gedaan wordt voor een bepaald instituut voor een bepaalde inquiry (duidt een periode aan)
+	- Unit-Registration = een afdeling van een instituut waar er een PPS gebeurt. Voor elke survey kunnen er meerdere unit registrations zijn. Merk op dat we van een unit registration de medische specialiteit van die unit bijhouden (vb. neurologie), het aantal dokters gelieerd aan de unit en het aantal pharmaceuten gelieerd aan de unit
+	- Patient-Registratie: van de patient houden we oa. bij: de leeftijdscategorie, het gewicht, het geboortegewicht, de gender en 1 of meer symptomen. Een patient is altijd gelieerd aan een unit-registration
+	- Treatments: een patient kan een of meerdere treatments krijgen. Van treatments houden we oa. bij: de dosering, het aantal dosissen per dag, het toegediende antimicrobial, de gestelde diagnose van de treatment, de indicatie waar de patient de infectie heeft opgelopen, het antimicrobial dat tijdens de behandeling gebruikt wordt en een aantal kwaliteitsindicatoren zoals de aanwezigheid of afwezigheid van richtlijnen, of de duur van de behandeling volgens de richtlijn was, of de dosering de richtlijn volgde,...
+	- Diagnose: classificatiesysteem inzake diagnoses (specifiek aan dit project)
+	- Indication: specificeer waar men vermoedt dat de infectie opgelopen is (vb. in het hospitaal)
+- Hieronder een schematische voorstelling van het gedenormalizeerde model.
 
 ![Datamodel OLAP](documentation/Datamodel-OLAP.png)
+
+- Enkele korte toelichtingen inzake de voorgestelde structuur
+	- Dimensie tabellen bevatten eigenlijk de zaken waarop je wil filteren/groeperen en niet mee wil rekenen
+		- Zaken waarmee men wil rekenen zitten in Fact tables
+	- Institution is 'gedenormaliseerd' opgenomen in Dim_Department om een hiërarchische structuur te vermijden (snowflake structuur)
+		- Makkelijker voor de mensen die de BI-tools gebruiken
+	- Gewicht van patient staat in Fact table en niet in de Patient-dimension table
+		- Gewicht is een continue getal en past dus niet in de combinatorische methode van een dimension tabel
+		- Het is dan beter om het als een DEGENERATED dimension op te nemen in de Facts table
+		- Door het mee op te nemen in de Fact table kan je sneller rapportages maken als: correlatie tussen gewicht en de dosering van het antimicrobial
+	- Geographic als aparte dimensie en niet gekoppeld aan Institution:
+		- Makkelijker om queries te doen op geografisch niveau (gebeurt veel).
+		- Nadeel: kan inconsistent worden met institution. ETL proces dient consistentie te garanderen
+        - Vaak zijn er queries die per land of per regio de treatments gaan opvragen ongeacht het institution (geografische slices)
 
 ## Implementatie
 ### FTP Server
@@ -273,9 +396,9 @@ TODO: beschrijving analyse
 	- zie 'Cleaning-up the environment'-sectie in link installatie procedure
 - Test opzet via de command line
 	- docker compose run airflow-worker airflow info
-- Url access GUI van Airflow: http://localhost:8080
+- URL access GUI van Airflow: http://localhost:8080
 - Om eigen image te maken met bijvoorbeeld extra python libraries:
-	- Zie section: 'Special case - adding dependencies via requirements.txt file' in install document (zie boven)
+	- Zie section: 'Special case - adding dependencies via requirements.txt file' in install document
 - Resources voor gebruik FT Operaties via connectors
 	- FTP Turorial: https://www.sparkcodehub.com/airflow/operators/ftp-operator
 	- FTP Operator: https://airflow.apache.org/docs/apache-airflow-providers-ftp/stable/operators/index.html
@@ -317,7 +440,7 @@ TODO: beschrijving analyse
 	- https://realpython.com/python-sql-libraries/#postgresql
 	- https://www.geeksforgeeks.org/python/postgresql-python-querying-data/
 	- psycopg library voor PostgreSQL te benaderen: https://www.psycopg.org/docs/usage.html
-	- Opmerking: alternatief zou zijn: SQLAlchemy
+	- Opmerking: alternatief: SQLAlchemy
 - Link export DataFrame naar Database via Pandas	
 	- https://pandas.pydata.org/docs/user_guide/io.html#sql-queries
 - Integratie MongoDB
@@ -327,7 +450,7 @@ TODO: beschrijving analyse
 		- https://docs.vultr.com/python/third-party/pandas/DataFrame/to_json
 	- Basis data manipulatie MongoDB & Python
 		- https://www.geeksforgeeks.org/mongodb/mongodb-python-insert-update-data/
-- Toevoegen Python dependencies aan image
+- Toevoegen Python dependencies aan Airflow image
 	- Ga naar Airflow dir
 	- Breng Airflow down (docker compose down)
 	- Voeg pip install instructies toe aan Dockerfile
@@ -598,6 +721,7 @@ TODO: beschrijving analyse
 	- Visualiseren via Seaborn
 	- Generatie outputbestanden (PNG-files voor grafieken, txt voor beschrijving dataset)
 - Aanpassing docker image Airflow voor toevoegen libraries visualisatie (matplotlib, seaborn, PyQt5)
+- Uitbreiden technische documentatie
 
 ## Geraadpleegde bronnen
 ### Boeken
@@ -647,3 +771,4 @@ TODO: beschrijving analyse
 	- https://airflow.apache.org/docs/apache-airflow/stable
 - Pandas documentation
 	- https://pandas.pydata.org/docs/
+- Cursus Data Engineering AP (Cop Christophe - 2026)
