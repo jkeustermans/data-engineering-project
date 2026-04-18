@@ -509,7 +509,7 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 	- Breng Airflow down (docker compose down)
 	- Voeg pip install instructies toe aan Dockerfile
 	- Doe docker build voor nieuwe image te maken (docker build .)
-	- Start Airflow (docker compose up -d)
+	- Start Airflow (docker compose up --build -d)  (vergeet build flag niet om alle containers te rebuilden)
 
 ### Google BigQuery
 - Opzet project in Google Cloud workspace

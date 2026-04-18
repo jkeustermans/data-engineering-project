@@ -9,6 +9,12 @@ import shutil
 import os
 
 class DataAnalyzer:
+    FILENAME_ANALYSIS_ATC3 = 'ATC3_Frequency.png'
+    FILENAME_ANALYSIS_THERAPY_INTENDED_DURATION = 'Therapy_Intended_Duration.png'
+    FILENAME_ANALYSIS_PRESCRIPTION_TYPE = 'Prescription_Types_Frequency.png'
+    FILENAME_ANALYSIS_PATIENTS_WEIGHTS = 'Patients_Weight.png'
+    FILENAME_ANALYSIS_PATIENTS_GENDER = 'Patients_Gender.png'
+    FILENAME_ANALYSIS_TREATMENTS_GENERAL_ANALYSIS = 'Treatments_General_Analysis.csv'
 
     def __init__(self, output_location, host, port, dbname, user, password):
         self.output_location = output_location
@@ -35,7 +41,7 @@ class DataAnalyzer:
         plt.title('Frequency ATC3 Antimicrobials in Treatments')
         plt.grid(axis='y', alpha=0.3)
         plotted_figure = plot.get_figure()
-        self._save_figure(plotted_figure, 'ATC3_Frequency.png')
+        self._save_figure(plotted_figure, self.FILENAME_ANALYSIS_ATC3)
         plt.close()
 
     def _analyze_prescription_types(self, original_dataframe: pd.DataFrame):
@@ -47,7 +53,7 @@ class DataAnalyzer:
         plt.title('Frequency Prescription Types in Treatments')
         plt.grid(axis='y', alpha=0.3)
         plotted_figure = plot.get_figure()
-        self._save_figure(plotted_figure, 'Prescription_Types_Frequency.png')
+        self._save_figure(plotted_figure, self.FILENAME_ANALYSIS_PRESCRIPTION_TYPE)
         plt.close()
 
     def _analyze_intended_duration_known(self, original_dataframe: pd.DataFrame):
@@ -60,7 +66,7 @@ class DataAnalyzer:
         plt.ylabel('ATC3')
         plt.grid(axis='y', alpha=0.3)
         plotted_figure = plot.get_figure()
-        self._save_figure(plotted_figure, 'Therapy_Intended_Duration.png')
+        self._save_figure(plotted_figure, self.FILENAME_ANALYSIS_THERAPY_INTENDED_DURATION)
         plt.close()
 
     def _analyze_patient_weights(self, original_dataframe: pd.DataFrame):
@@ -72,7 +78,7 @@ class DataAnalyzer:
         plt.title('Patient Weights')
         plt.grid(axis='y', alpha=0.3)
         plotted_figure = plot.get_figure()
-        self._save_figure(plotted_figure, 'Patient_Weights.png')
+        self._save_figure(plotted_figure, self.FILENAME_ANALYSIS_PATIENTS_WEIGHTS)
         plt.close()
     
     def _analyze_genders(self, original_dataframe: pd.DataFrame):
@@ -84,12 +90,12 @@ class DataAnalyzer:
         plt.title('Gender of Patients')
         plt.grid(axis='y', alpha=0.3)
         plotted_figure = plot.get_figure()
-        self._save_figure(plotted_figure, 'Patients_Gender.png')
+        self._save_figure(plotted_figure, self.FILENAME_ANALYSIS_PATIENTS_GENDER)
         plt.close()
 
     def _analyze_dataset_treatments_describe(self, original_dataframe: pd.DataFrame):
         dataframe = original_dataframe[['patient_weight', 'patient_birth_weight', 'single_unit_dose', 'daily_doses', 'therapy_intended_duration']]
-        dataframe.describe().round(2).to_csv(self._determine_full_path_to_file('Treatments_Description.txt'))
+        dataframe.describe().round(2).to_csv(self._determine_full_path_to_file(self.FILENAME_ANALYSIS_TREATMENTS_GENERAL_ANALYSIS))
     
     def _create_dir(self, dir):
         if os.path.exists(dir):
@@ -113,6 +119,6 @@ class DataAnalyzer:
         self._analyze_genders(dataframe_patients)
         self._analyze_dataset_treatments_describe(dataframe_treatments)
         
-LOCAL_RUN_DB_PORT = 5433
-data_analyzer = DataAnalyzer(DIR_ANALYSIS_OUTPUT_LOCAL_RUN, LOCAL_RUN_DB_HOST, LOCAL_RUN_DB_PORT, LOCAL_RUN_DB_NAME, LOCAL_RUN_DB_USER, LOCAL_RUN_DB_PASSWORD)
-data_analyzer.start_analysis()
+# LOCAL_RUN_DB_PORT = 5433
+# data_analyzer = DataAnalyzer(DIR_ANALYSIS_OUTPUT_LOCAL_RUN, LOCAL_RUN_DB_HOST, LOCAL_RUN_DB_PORT, LOCAL_RUN_DB_NAME, LOCAL_RUN_DB_USER, LOCAL_RUN_DB_PASSWORD)
+# data_analyzer.start_analysis()
