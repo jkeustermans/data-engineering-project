@@ -29,7 +29,13 @@
 	- Apache Airflow
 	- Google BigQuery
 	- MogoDB
-- Finale Target Architectuur
+	- Ontwerp Implementatie Flow
+		- Beschrijving
+		- Schematisch
+- Target Architectuur
+	- Algemeen
+	- Beschrijving
+	- Schematisch
 - Journal
 - Reflectie Projectopdracht
 - Geraadpleegde bronnen
@@ -41,14 +47,14 @@ Bedoeling van dit document is om een high-level overzicht te geven van de techni
 - Data Model
 - Implementatie
 
-Er zal tevens een sectie opgenomen worden waarin de progressie van het project beschreven wordt (zie sectie Journal). Dit dient een chronologisch beeld te geven welke activiteiten er hebben plaatsgevonden. 
+Er zal tevens een sectie opgenomen worden waarin de progressie van het project beschreven wordt (zie sectie Journal). Dit dient een chronologisch beeld te geven over de activiteiten die hebben plaatsgevonden. 
 Het laatste deel van dit document zal nog twee extra zaken bevatten:
-- Een (ruwe) architectuur van het systeem zoals het in de praktijk ontwikkeld zou kunnen worden. Immers het project zoals het voor dit opleidingsonderdeel ontwikkeld is geweest, is een vereenvoudigde vorm van een project dat werkelijk geïmplementeerd zal worden
+- Een high level architectuur van het systeem zoals het in de praktijk ontwikkeld zou kunnen worden. Immers het project zoals het voor dit opleidingsonderdeel ontwikkeld is geweest, is een vereenvoudigde vorm van een project dat in de toekomst werkelijk geïmplementeerd zal worden.
 - Reflectie over het project. Dit wil zeggen: hoe heb ik het aangepakt, wat zijn de dingen die ik geleerd heb, welke moeilijkheden ben ik tegengekomen, welke stukken zijn suboptimaal en dienen verbeterd te worden voor de reële implementatie,...
 
 Het document eindigt tenslotte met bronverwijzingen.
 
-Er zullen ook nog extra documenten toegevoegd worden die dieper ingaan op een aantal elementen mbt. de reële implementatie van het project. Ik beschouw dit als aparte analyses, vandaar dat deze in aparte documenten zijn opgenomen. Deze documenten beschrijven oa. een aantal kandidaat data-architecturen voor de reële implementatie van het project. Tevens bevatten deze de afwegingen die er gemaakt dienen te worden en wat de aandachtspunten zijn.
+Er zal ook nog extra documentatie toegevoegd worden die dieper ingaat op een aantal aspecten mbt. de reële implementatie van het project. Ik beschouw dit als aparte analyses, vandaar dat deze documentatie apart is opgenomen. Deze documentatie beschrijft oa. een aantal kandidaat data-architecturen voor de reële implementatie van het project. Tevens bevat deze de afwegingen die er gemaakt dienen te worden en wat de aandachtspunten zijn bij de opzet van een data-architectuur.
 
 Opmerking: om de tekst niet al te zwaar te maken zullen in dit document de meeste zaken als bullet points genoteerd worden.
 
@@ -58,16 +64,16 @@ Voor verdere details inzake de aanpak (oa. gebruik van AI) verwijs ik naar de se
 
 ## Functionele beschrijving (High-Level)
 De nadruk in dit project ligt op het opstellen van een ETL (en een Reverse ETL) Proces dat uitgevoerd zal worden door een Orchestrator library. Binnen deze orchestrator zal de workflow gedefinieerd worden (in de vorm van een Directed Acyclic Graph) die bestaat uit een aantal Tasks die onderling afhankelijk zijn. Deze Tasks zijn onderverdeeld in TaskGroups die toelaten om bepaalde Tasks in Parallel uit te voeren. In grote lijnen kan de verwerking als volgt worden omschreven:
-- Negen CSV bestanden staan bijwijze van vertrekpunt klaar in de Outbounds map op de FTP Server
+- Negen CSV bestanden staan bij wijze van vertrekpunt klaar in de Outbounds map op de FTP Server
 - De orchestrator zal dagelijks (of manueel) een DAG opstarten die de verwerking zal uitvoeren
 - De eerste Task van de flow zal de CSV bestanden van de FTP Downloaden naar het lokale filesysteem van Airflow zodat Airflow Workers deze bestanden kunnen accessen
 - Vervolgens wordt de eerste TaskGroup uitgevoerd waarbij er 2 parallelle processen worden uitgevoerd:
-	- Task 1: het uitlezen van de CSV bestanden, deze in een gedenormalizeerd model gieten (Kimball) en persisteren naar een Datawarehouse
+	- Task 1: het uitlezen van de CSV bestanden, deze in een gedenormalizeerd model gieten (Kimball) en persisteren naar een RDBMS/DWH
 	- Task 2: het uitlezen van de CSV bestanden, deze in document-formaat gieten en vervolgens persisteren naar een document database
-- Als deze TaskGroup afgerond is dan wordt de volgende TaskGroup opgestart die tevens bestaat uit 3 taken:
+- Als deze TaskGroup afgerond is dan wordt de volgende TaskGroup opgestart die bestaat uit 3 taken:
 	- Task 1: uitlezen Datawarehouse model en dit OLAP model identiek persisteren naar een Google BigQuery database
 	- Task 2: Reverse ETL(1): analyze van de datasets, generatie van grafieken in PNG bestanden en het maken van een korte analyse van de gehele dataset in CSV formaat
-	- Task 3: Reverse ETL(1): zorg ervoor dat de bestanden van de analyze terug op de FTP server terecht komen zodat deze door de domein experten (data scientists/onderzoekers) kunnen gedownload worden
+	- Task 3: Reverse ETL(2): zorg ervoor dat de bestanden van de analyze terug op de FTP server terecht komen zodat deze door de domein experten (data scientists/onderzoekers) kunnen gedownload worden
 
 Schematisch voorgesteld:
 
@@ -120,7 +126,7 @@ De **vereenvoudigde** opzet zal bestaan uit een aantal componenten die via Docke
 		- De financiële situatie van de onderzoeksgroep laat niet toe al te dure investeringen te doen
 - MongoDB
 	- Bedoeling is ook om documents (aggregated content) op te slaan
-	- Opmerking: deze case is gekozen voor educatieve doeleinden. In de specifieke realiteit van het project is er voorlopig geen vraag naar (alhoewel dit best in de toekomst wel het geval zou kunnen zijn)
+	- Opmerking: deze case is gekozen voor educatieve doeleinden. In de specifieke realiteit van het project is er voorlopig geen vraag naar (alhoewel dit in de toekomst wel gevraagd zou kunnen worden)
 - Cloud Storage/DB
 	- Er zal een data transfer gedaan worden naar een Cloud Database zodat externe partners Reporting/Analytics/AI-tooling in de Cloud kunnen loslaten op de gegevens
 	- In eerste instantie gaat de voorkeur van het project uit naar Google Cloud Storage & BigQuery
@@ -169,17 +175,17 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 			- Data Mart is een subset van de Datawarehouse specifiek aan één doel of afdeling binnen het bedrijf
 	- Data-Vault
 		- Mix tussen normalisatie en dimensioneel modeleren
-		- Bevat verzameling gekoppelde tabellen die historische informatie bevat van processen
+		- Bevat verzameling gekoppelde tabellen die historische informatie bevat omtrent processen
 		- Men maakt onderscheid tussen Hubs, Links en Satellites
 			- Hubs: Bevat alleen keys, geen beschrijvende data
 			- Links: vergelijkbaar met feitentabellen. Ze beschrijven de relaties die verschillende Hubs onderling hebben. Ze bevatten niet de feiten zelf
 			- Satellites: bevatten de dimensie-attributen en de feiten. Gekoppeld via Foreign Keys aan Links / Hubs
 #### Methode van Kimball
-- Datawarehouse bestaat uit stermodellen die de organisatie beschrijven
-- Stermodel heeft 2 soorten tabellen
+- Een Datawarehouse bestaat uit stermodellen die de organisatie beschrijven
+- Een stermodel heeft 2 soorten tabellen
 	- Dimensie-tabel: bevatten de context van de feiten
 	- Feiten-tabel: bevat de informatie die gemeten kan worden
-- Andere modellering dan deze die gebruikt wordt voor OLTP (genormaliseerd)
+- Is een andere modellering dan deze die gebruikt wordt voor OLTP (genormaliseerd)
 - Kimball zal denormaliseren: staat dichter tegen de eindgebruikers en is makkelijker ondervraagbaar via BI tools
 - Tijdens het modelleerproces dient het grain niveau bepaald te worden = niveau van detail
 	- Als je een kleine grain neemt dan heb je enorm veel rijen met veel detail (kan veel resources vergen voor ondervraging)
@@ -187,11 +193,11 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 - Dimensies
 	- Dimensie-tabel bevat een aantal attributen die een dimensie beschrijven (vb. gender van een patiënt)
 	- Het zijn platgeslagen tabellen
-	- Er wordt vaak gewerkt met datumdimensies (makkelijker om periodes te filteren)
+	- Er wordt vaak gewerkt met datum-dimensies (makkelijker om periodes te filteren)
 		- Kan extra zaken bevatten zoals het kwartaalnummer, weeknummer, boekjaar (in geval van gebroken boekjaren),...
 	- Meestal wordt het aantal dimensies per stermodel beperkt tot 7
 	- Er zijn een aantal soorten dimensies
-		- Slowly Changing Dimensions
+		- Slowly Changing Dimensions (SCD)
 			- Attributen van een dimensie kunnen in de loop der tijd veranderen
 			- SCDs zijn een manier om hiermee om te gaan
 			- SCD Type 1
@@ -212,7 +218,7 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 			- Dit zijn kolommen met lage cardinaliteit (anders zou het aantal combinaties snel explosief toenemen)
 			- Vb. combinatie: is-urgent, is-escalated, within-sla voor een bepaalde ticket
 		- Degenerate Dimension
-			- Een attribute dat geen aparte dimension zal vormen maar dat in de facts table blijft (vb. gewicht van een patiënt in ons model)
+			- Een attribute dat geen aparte dimension zal vormen maar dat in de facts table opgenomen wordt (vb. gewicht van een patiënt in ons model)
 	- Er zijn nog veel andere soorten dimensions geïdentificeerd door Kimball (zie boek Datawarehouse Toolkit voor meer details) 
 - Feiten
 	- Feiten zijn vaak numeriek en/of aggregeerbaar
@@ -226,7 +232,7 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 	- Verder zijn er soorten feiten'tabellen'
 		- Meeste feiten zijn gevolg van zaken die geregistreerd worden (vb. scan aan kassa = registratie aankoop)
 		- Accumulating snapshot: geeft de huidige status van de feiten weer maar feiten kunnen nog aan verandering onderhevig zijn
-			- Voorbeeld: men maakt een offerte voor de verkoop van een auto. Deze offerte wordt al dan niet een aankoop. Het bestaande aankoop-feitenrecord kan aangevuld worden met de effectieve aankoopdatum als de aankoop doorgaat
+			- Voorbeeld: men maakt een offerte voor de verkoop van een auto. Deze offerte zal al dan niet een aankoop worden. Het bestaande aankoop-feitenrecord kan aangevuld worden met de effectieve aankoopdatum als de aankoop doorgaat
 		- Periodieke snapshot: je slaat gegevens over feitentabellen op met een bepaalde frequentie (snapshot). Er is een datumkey die de stand van zaken weergeeft op een bepaalde specifieke datum
 #### Orchestration
 - Om het ETL proces uit te voeren wordt er gebruik gemaakt van een Orchestration tool. Deze tool zal pipelines opzetten die een aantal systemen met mekaar in verbinding zal brengen. Uit sommige van deze systemen zal data geëxtraheerd worden om deze vervolgens te cleanen, transformeren, enrichen,... en op te slaan in een ander systeem. Een klassiek voorbeeld is het extraheren van data uit een OLTP RDBMS en deze te transformeren naar een gedenormalizeerde vorm die dan in een OLAP Database opgeladen/gepersisteerd zal worden.
@@ -240,7 +246,7 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 - De tool die we gebruiken is Apache Airflow. Alternatieven zijn Prefect of Dagster.
 - Er is geopteerd voor Apache Airflow omdat deze technologie een proven status heeft en omdat deze ook de standaard technologie is achter Google Composer (de orchestration tool in het Google Cloud Platform)
 - De flow wordt gedefinieerd in DAGs waarbij een Scheduler de DAGs inlaadt en opstart. De logica gedefinieerd in de DAGs zal dan worden uitgevoerd door Workers
-- Verder biedt Apache Airflow een aantal mogelijkheden om de flows te monitoren en grafisch weer te geven
+- Verder biedt Apache Airflow een aantal mogelijkheden om de flows te monitoren/auditen en grafisch weer te geven
 
 **Schematisch**
 
@@ -266,25 +272,28 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 		- Inbound = de data die zal geupload worden naar de FTP server
 			- Vb. analyses die gebeurd zijn door bepaalde processen (vb. reverse ETL)
 		- Outbound = de data die door andere processen (vb. Airflow) zal gedownload worden
-			- Vb. de data files die als input gelden voor de DAG (Airflow verwerking)
-- Merk op dat in een bedrijf wellicht een full-blown Datalake zal gebruikt worden ipv. een FTP server (er is wel een beperkte literatuur doorgenomen mbt. mogelijke technologieën - zie sectie 'Geraadpleegde bronnen').
+			- Vb. de data files die als input gelden voor een data-pipeline (DAG Airflow verwerking)
+- Merk op dat in een bedrijf wellicht een full-blown Datalake zal gebruikt worden ipv. een FTP server
+	- (er is hieromtrent enkel beperkte literatuur doorgenomen mbt. mogelijke technologieën - zie sectie 'Geraadpleegde bronnen').
 
 ### Orchestrator
 - Airflow zal het ETL proces aansturen dmv. het definiëren van flows via Directe Acyclic Graphs (DAGs)
 	- Definieert Workflows
-	- Definieert afhankelijkheden tussen taken
+	- Definieert afhankelijkheden tussen taken/taakgroepen
 	- Voert de jobs uit
-- Airflow zal er ook voor zorgen dat deze flows gemonitord kunnen worden en dat als er zich bepaalde gebeurtenissen voordoen in deze flows dat er dan bepaalde acties ondernomen worden (vb. een aantal retries in geval van failures)
+- Airflow zal er ook voor zorgen dat deze flows gemonitord kunnen worden. Als er zich dan bepaalde gebeurtenissen voordoen in deze flows dan kunnen bepaalde acties ondernomen worden (vb. een aantal retries in geval van failures)
 - Er wordt gebruik gemaakt van een aangepaste Docker container zodat er bepaalde Python libraries opgenomen zijn die in de DAG code gebruikt kunnen worden
-- De DAG zal in Python classes/code beschreven worden
+- De DAG zal in Python classes/code beschreven/gedefinieerd worden
 	- Er zal gebruik gemaakt worden van Helper classes (vb. voor Data Access)
 - De Orchestrator zal op verschillende manieren geconfigureerd kunnen worden
 	- Meestal wordt een processing gescheduled als zijnde een verwerking die met een bepaalde frequentie plaatsvindt (vb. elke nacht)
+	- In dit project gaan we telkens de dataset opnieuw opbouwen omdat het een kleine dataset betreft
+	- Vaak zal er in de praktijk ook gebruik gemaakt worden van incrementele verwerking (steeds aanvullen van nieuwe data)
 - De Orchestrator zal Python classes aanspreken die dan de effectieve logica van de verwerking bevat. Tevens zal de Orchestrator zelf ook bepaalde access abstraheren (vb. connectie naar FTP Server) zodat bijvoorbeeld Datasources in Airflow zelf gedefinieerd kunnen worden
 	- Er is gebruik gemaakt van constructor injection zodat de meeste Python classes technologisch onafhankelijk blijven van Airflow (Design Pattern)
 - Concrete Flow:
 	- Aanmaak DAG met verschillende Tasks en TaskGroups in Airflow
-	- Scheduling: elke dag zal DAG draaien
+	- Scheduling: elke dag zal DAG draaien (full dataset upload)
 	- Proces:
 		- Download CSV bestanden vanuit de FTP Server
 		- Deze worden lokaal opgeslagen
@@ -303,9 +312,9 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 			- Uitlezen data vanuit Datawarehouse naar Pandas dataframes
 			- Persisteren gaat via de Google Cloud BigQuery library
 			- Persisteren gebeurt via LoadJob
-			- Beperkingen op Google Cloud Processing
-			- Enkel de eerste 5 elementen van elk dataframe worden weggeschreven
-				- Reden: free tier -> trage processing en beperkingen
+			- Opgelet: er zijn beperkingen op Google Cloud Processing
+				- Enkel de eerste 5 elementen van elk dataframe worden weggeschreven
+				- Reden: free tier -> trage processing/beperkingen & omwille van de sensitiviteit van de data
 		- Analyse van datasets (REVERSE ETL)
 			- DataAnalyzer Python class
 			- Genereren meerdere grafieken
@@ -315,28 +324,28 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 				- Patient Gender (categorie) (barchart)
 				- Patient Weights (bins) (histogram)
 				- Algemene analyse dataset (text content) (csv)
-			- Deze bestanden worden vanuit Airflow geupload naar de FTP Server (Reverse ETL)
-	- Er zijn TaskGroups die Tasks bevatten die parallel zullen uitgevoerd worden
+			- Deze bestanden worden vanuit Airflow terug geupload naar de FTP Server (Reverse ETL)
+	- Er zijn TaskGroups die Tasks bevatten die veelal parallel zullen uitgevoerd worden
 	
 ### Datawarehouse
 - Er zal een klassieke RDBMS worden gebruikt die dienst zal doen als Datawarehouse
 	- PostgreSQL
 - Consumers: Data Scientists
 - Deze zal data bevatten die gedenormalizeerd is
-- Er is binnen deze context geopteerd voor Kimball te gebruiken
+- Er is binnen deze context geopteerd om het datamodel via de Kimball methode uit te werken
 
 ### Document Database
-- Er zal gebruik gemaakt worden van een Documentstore
+- Er zal gebruik gemaakt worden van een Document-store
 	- MongoDB
 - Consumers: externe partners
 - In het huidige project is er geopteerd om voor elke treatment 1 document te voorzien in de database
-- Er zijn verschillende manieren om hiermee om te gaan. Men zou ook kunnen geopteerd hebben om de treatment gerelateerde data op te slaan in aparte documenten en die dan te koppelen via keys.
+- Er zijn verschillende manieren om hiermee om te gaan. Men zou ook kunnen geopteerd hebben om de treatment gerelateerde data op te slaan in aparte documenten en die dan te koppelen via keys
 
 ### Google Cloud (BigQuery)
 - Deze database zal als Cloud Database fungeren
 - OLAP model in DWH wordt identiek gerepliceerd naar BigQuery
 - Consumers: externe partners
-- De cloud lijkt een interessante oplossing omdat BigQuery direct geïntegreerd kan worden met allerlei tooling, zowel klassieke reporting tooling als Looker Studio, als Machine Learning Tooling (Vertex AI)
+- De cloud lijkt een interessante oplossing omdat BigQuery direct geïntegreerd kan worden met allerlei tooling
 	- Looker Studio = maken van dashboards (grafieken en tabellen). Vergelijkbaar met Power BI, Tableau
 	- VertexAI, BigQuery ML = voor Machine Learning doeleinden
 - Er wordt slechts een beperkt aantal records naar BigQuery weggeschreven omwille van restricties mbt. de free tier van GCP
@@ -355,10 +364,11 @@ Schema van het datamodel:
 ![Datamodel landingzone](documentation/Datamodel-Landingzone.png)
 
 #### Beschrijving datamodel
-Hieronder staat een oplijsting van de aanwezige datasets met een high-level verklaring. Merk op dat het slechts om een subset van de werkelijke data gaat.
+Hieronder staat een oplijsting van de aanwezige datasets met een high-level beschrijving. Merk op dat het slechts om een subset van de werkelijke data gaat.
 - Institutions
 	- Bevat de hospitalen die deel hebben genomen aan bepaalde surveys. In dit geval gaat het om Outpatient Surveys. In deze tabel wordt een kleine dataset aan gegevens bijgehouden.
 	- Duiding Kolommen:
+		- Naam: geanonimiseerde naam van het instituut/hospitaal
 		- Country-Code: in welk land is het instituut/hospitaal gevestigd
 		- Sub-Region-Code: in welke subregio in de wereld is het instituut gevestigd
 		- Subtype-Code: wat voor soort instituut is het (primair hospitaal, secundair hospitaal,...)
@@ -373,8 +383,8 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 		- Survey-ID: met welke survey is deze Unit-Registration gekoppeld
 		- Survey-Date: datum waarop de survey gebeurd binnen deze unit
 		- Medical Specialty Type: wat is de specialiteit van deze Unit (vb. Neurologie)
-		- Nbr-of-doctors: aantal doctors gelieerd aan deze unit
-		- Nbr-of-Pharmacists: aantal pharmaceuten gelieerd aan deze unit
+		- Nbr-of-doctors: aantal doctors gelieerd aan deze unit (tijdens de survey)
+		- Nbr-of-Pharmacists: aantal farmaceuten gelieerd aan deze unit (tijdens de survey)
 - Outpatient-Registrations
 	- Tijdens een survey worden gegevens genoteerd van de patiënten die gesurveyeerd worden.
 	- Duiding kolommen
@@ -383,7 +393,7 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 		- Gender: gender van de patiënt
 		- Weight: gewicht
 		- Birth-Weight: gewicht in geval van een neonaat
-		- Symptom-codes: codes voor symptomen dat de patiënt vertoond (1 of meerdere gescheiden van mekaar door een pipe)
+		- Symptom-codes: codes voor symptomen die de patiënt vertoond (1 of meerdere gescheiden van mekaar door een pipe)
 - Outpatient-Treatments
 	- Er gebeuren 2 soorten registraties:
 		- Algemene registraties: er wordt geen bijkomende data genoteerd (enkel een aantal basis patiënt gegevens). Dit soort registratie wordt gedaan als er geen antimicrobial wordt voorgeschreven. Deze patiënt wordt wel geregistreerd oa. omwille van het feit dat we willen weten hoeveel patiënten er in totaal zijn gesurveyeerd tov. het aantal patiënten dat een antimicrobial heeft gekregen
@@ -395,13 +405,13 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 		- Single Unit Dose: dosering van een unit (vb. 1 pilletje)
 		- Dose Unit: eenheid (mg, gram, microliter,...)
 		- Daily Doses: aantal dosissen per dag
-		- Therapy Intended Duration Known: is de duur van de behandeling gekend
+		- Therapy Intended Duration Known: is de duur van de behandeling gekend?
 		- Therapy Duration: duur van de behandeling
 		- Diagnosis-Code: code van de gestelde diagnose (apart classificatiesysteem specifiek aan het project)
-		- Indication-Code: waar heeft de patiênt de infectie opgedaan (thuis, in het ziekenhuis,...)
+		- Indication-Code: waar heeft de patiênt de infectie (vermoedelijk) opgedaan (thuis, in het ziekenhuis,...)
 		- Reason in notes: staat de rede voor het toedienen van het antimicrobial in het dossier van de patiënt?
 		- Reference Guideline Exists: is er een richtlijn aanwezig voor het gebruik van het verstrekte antimicrobial?
-		- Drug According To Guideline: is het toegediende antimicrobial effectief volgens de richtlijn voor het gebruik ervan?
+		- Drug According To Guideline: is het toegediende antimicrobial effectief bestemd voor het gebruik volgens de richtlijn?
 		- Dose According to Guideline: stemt de dosis die gegeven is overeen met de richtlijn?
 		- Duration According to Guideline: stemt de duur van de behandeling overeen met de richtlijn?
 		- ROA According to Guideline: is de manier van toedienen (oraal, parenteraal,...) volgens de richtlijn?
@@ -433,12 +443,49 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 		- Gewicht is een continue getal en past dus niet in de combinatorische methode van een dimension tabel
 		- Het is dan beter om het als een DEGENERATED dimension op te nemen in de Facts table
 		- Door het mee op te nemen in de Fact table kan je sneller rapportages maken als: correlatie tussen gewicht en de dosering van het antimicrobial
-	- Geographic als aparte dimensie en niet gekoppeld aan Institution:
+	- Geographic als aparte dimensie en niet gekoppeld aan Institution (zoals in de oorspronkelijke dataset wel het geval is):
 		- Makkelijker om queries te doen op geografisch niveau (gebeurt veel).
 		- Nadeel: kan inconsistent worden met institution. ETL proces dient consistentie te garanderen
         - Vaak zijn er queries die per land of per regio de treatments gaan opvragen ongeacht het institution (geografische slices)
 
 ## Implementatie
+### Ontwerp Implementatie Flow
+#### Beschrijving
+Deze sectie beschrijft kort de manier waarop de implementatie in code gebeurd is.
+We kunnen de (Python) code ruwweg onderverdelen in:
+- DAG-Processor logica
+	- Deze code zal de integratiecode vormen met Apache Airflow
+	- Deze code definieert
+		- De TaskGroups van de DAG
+		- De Tasks binnen de TaskGroups
+		- De afhankelijkheden tussen Tasks/TaskGroups
+		- De verwerkingswijze
+			- Sequentiële uitvoer
+			- Parallelle uitvoer
+- Offload-Processor classes
+	- Dit zijn de classes die de logica bevatten voor een specifieke Offload
+		- Ze bevatten de logica inzake het indelen/koppelen/verwerken van de verschillende datasets
+		- Types offload
+			- Datawarehouse (OLAP Model)
+			- MongoDB (Document-structuur)
+			- BigQuery (Cloud DB - Replicate OLAP Model)
+	- Deze classes doen zelf géén data access
+		- Separation of concerns
+- DAO classes
+	- Deze classes handelen de integratie met infrastructuur/Database componenten af
+		- MongoDB
+		- PostgreSQL
+	- Kunnen zowel lees -als schrijfoperaties bevatten
+- Helper classes
+	- CSVReader
+		- Leest de CSV Files vanuit het filesysteem
+		- Constants (bevat constante waarden van waaruit door de andere classes kan gerefereerd worden)
+- De classes maken zoveel mogelijk gebruik van constructor-injection/dependency injection om deze agnostisch te houden tov. bepaalde technologieën (zoals vb. Airflow)
+#### Schematisch
+Hieronder staat een schematisch overzicht van de classes en hun onderlinge afhankelijkheden. Dit diagram is enkel bedoeld om een snel overzicht te geven van deze afhankelijkheden. Omdat het een eenvoudig diagram betreft is het omwille van pragmatische redenen informeel van aard.
+
+![Datamodel OLAP](documentation/Class-Diagram.png)
+
 ### FTP Server
 - FTP opzet duiding
 	- Passieve poorten zijn de poorten voor bestandsoverdracht
@@ -461,8 +508,8 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 - Test opzet via de command line
 	- docker compose run airflow-worker airflow info
 - URL access GUI van Airflow: http://localhost:8080
-- Om eigen image te maken met bijvoorbeeld extra python libraries:
-	- Zie section: 'Special case - adding dependencies via requirements.txt file' in install document
+- Om eigen image te maken met bijvoorbeeld extra Python libraries:
+	- Zie section: 'Special case - adding dependencies via requirements.txt file' in install document van Airflow
 - Resources voor gebruik FT Operaties via connectors
 	- FTP Turorial: https://www.sparkcodehub.com/airflow/operators/ftp-operator
 	- FTP Operator: https://airflow.apache.org/docs/apache-airflow-providers-ftp/stable/operators/index.html
@@ -550,7 +597,7 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 	- Run het DDL_Setup.sql script onder de cloud directory in Google BigQuery
 	- Er wordt een drop gedaan van alle tabellen om vervolgens de tabellen opnieuw aan te maken
 	- Run de DAG in Apache Airflow
-	- In het bestand Queries.txt onder de cloud directory staan voorbeeld queries voor het bekijken van de data
+	- In het bestand Queries.txt onder de cloud directory staan voorbeeld-queries voor het bekijken van de data
 	- Merk op dat er slechts 5 records worden doorgestuurd naar BigQuery (data privacy & limitatie van data transfer op GCP Free-Tier)
 ### MongoDB
 	- Connecteren: docker exec -it <container-id> bash
@@ -561,26 +608,26 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 	- Doorzoeken collection: db.medical_documents.find()
 	- Verwijderen alle documenten: db.medical_records.remove({})
 
-## Finale Target Architectuur
-### Inleidend
+## Target Architectuur
+### Inleiding
 Zoals eerder gesteld is deze projectopdracht een vereenvoudigde versie van een project dat in latere fase binnen onze onderzoeksgroep geïmplementeerd zal worden. Binnen dit kader heb ik dan ook een voorbereidende high-level architectuur uitgetekend. Wellicht zullen er hier en daar nog elementen schuiven maar de bedoeling is hier om een architecturale oefening te maken die een real-world scenario beschrijft.
 ### Beschrijving
-Hieronder volgt een korte/high-level beschrijving van de target architectuur.
-Zoals we zien dat de volledige architectuur kan onderverdeeld worden in een aantal segmenten.
+Hieronder volgt een korte/high-level beschrijving van de target architectuur. Verderop kan men een overzichtschema vinden.
+De volledige architectuur kan onderverdeeld worden in een aantal segmenten.
 - OLTP gedeelte dat bestaat uit:
 	- Load Balancer die het verkeer verdeeld over de backend componenten
-	- Webcontainers (redundancy voor high availability) die inkomende vragen inzake de data-entry tool afhandelen
+	- Webcontainers (redundancy voor high availability) die inkomende gebruikers-requests inzake de data-entry tool afhandelen
 	- Node voor Asycnhrone Processing (generatie statische R-rapporten, data-exports, data-imports,...) 
-	- Node voor Reporting
-	- Database Node
+	- Node voor Reporting doeleinden
+	- Database Node (OLTP)
 - OLAP gedeelte en data pipeline(s). Hier zien we de volgende nodes:
 	- Landingzone met een aantal componenten
 		- Database (replica van Master OLTP DB)
 		- Filesystem voor klassieke data opslag
-		- Object Storage (dit zou bijvoorbeeld een MinIO kunnen worden, dit is echter nog nader te bepalen)
+		- Object Storage (dit zou bijvoorbeeld een MinIO/Iceberg kunnen worden, dit is echter nog nader te bepalen)
 	- Node voor Orchestrator
 		- Op deze node zal Apache Airflow komen te staan
-		- Hoe de finale opzet van Airflow eruit zal komen te zien zal nog te bekijken zijn (afhankelijk van de verwachte load en beschikbare financiële resources)
+		- Hoe de finale opzet van Airflow eruit zal komen te zien zal nog nader te bekijken zijn (afhankelijk van de verwachte load en beschikbare financiële resources)
 			- Distributed met meerdere workers (CeleryExecutor)
 			- KubernetesExecutor (Kubernetes architectuur)
 			- LocalExecutor (single node)
@@ -592,22 +639,22 @@ Zoals we zien dat de volledige architectuur kan onderverdeeld worden in een aant
 			- Kostenreductie (wegens weinig werkingsmiddelen)
 		- Deze OLAP database zal ook vanuit de Reporting Node gebruikt kunnen worden (vereenvoudigen/optimaliseren R-reporting code)
 		- Ook zullen de domein experten deze database kunnen gebruiken voor data-science doeleinden
-		- De OLAP database zal ook gebruikt worden om datasets aan te maken die voor externe partijen dienen aangemaakt te worden
-		- Eens deze aangemaakt zijn dan kunnen deze overgezet worden naar Cloud databases (vb. GCP, Azure, AWS)
-		- Door een lokale OLAP database op te vullen alvorens deze over te zetten naar een Cloud database krijgen we twee voordelen: 
-			- De data scientists van ons eigen onderzoeksteam kunnenn ook gebruik maken van deze database indien gewenst
-			- Het debuggen in geval van problemen is makkelijker. De testbaarheid gaat naar omhoog wat we kunnen de processing lokaal opstarten en onmiddellijk lokaal de data nakijken
+		- De OLAP database zal ook gebruikt worden om datasets aan te maken die voor externe partijen bestemd zijn
+		- Eens deze aangemaakt zijn dan kunnen deze overgezet worden naar een Cloud databases (vb. GCP, Azure, AWS)
+		- Een lokale OLAP database opvullen alvorens deze over te zetten naar een Cloud database heeft een aantal wevoordelen: 
+			- De data scientists van ons eigen onderzoeksteam kunnen ook gebruik maken van deze database indien gewenst
+			- Het debuggen in geval van problemen is makkelijker. De testbaarheid gaat naar omhoog want we kunnen de processing lokaal opstarten en zodus tevens lokaal de data nakijken
 			- Door de verbeterde testbaarheid drukken we ook de kosten omdat we enkel data gaan doorsturen naar een Cloud Database indien we zeker zijn dat de verwerking correct is (geen extra kosten tgv. iteratieve testen)
 - Cloud gedeelte
 	- In de huidige architectuur is geopteerd voor GCP maar dit kan evengoed een Azure of AWS systeem zijn
-	- Voor database is er geopteerd voor BigQuery
+	- Voor de database is er geopteerd voor BigQuery
 	- Een Cloud systeem biedt een aantal zaken out-of-the-box, waaronder onder andere:
-		- Integratie met AI/ML Tooling
-		- Integratie met BI-Tooling (Dashboards)
+		- Integratie met AI/ML Tooling (VertexAI)
+		- Integratie met BI-Tooling (Dashboards/Looker Studio)
 		- Data Governance aspecten (auditing mechanismes, data-lineage,...)
 	- Belangrijk: er dient nog wel verder onderzocht te worden of er limiterende factoren zijn wat betreft het opladen van gegevens op een Cloud systeem.
 		- Door de huidige geografische verschuivingen kan het gevoelig liggen om data op een (Aemerikaans) Cloud systeem te zetten
-		- De policy van de externe partij kan ook bepaalde restricties opleggen (WHO is gevoelig voor de plaats van data-opslag)
+		- De policy van de externe partij kan ook bepaalde restricties opleggen (zo is WHO erg gevoelig voor de locatie van data-opslag)
 		- Andere compliancy factoren kunnen ook restricties opleggen
 	- Belangrijk is dat de data zowel 'in-rest' als 'in-transfer' geëncrypteerd dient te worden
 		- Wellicht zal er geopteerd worden voor de selectie van een Post-Quantum-Cryptography oplossing
@@ -742,7 +789,7 @@ Zoals we zien dat de volledige architectuur kan onderverdeeld worden in een aant
 - Initiële data exfiltratie OLTP
 	- Schrijven queries voor ophalen data uit het OLTP systeem
 	- Filtering en initiële transformatie van de data
-	- Anonymisering
+	- Anonimisering
 - Implementatie testcode voor database manipulaties in DAG
 	- Libraries:
 		- psycopg
@@ -823,7 +870,7 @@ Zoals we zien dat de volledige architectuur kan onderverdeeld worden in een aant
 ### Week 6 april
 - Implementeren offload processing naar MongoDB
 	- Refactoring bestaande classes (rename, extractie constanten,...)
-	- Implementeren documentdb_offload_processor
+	- Implementeren DocumentDBOffloadProcessor
 	- Testen initiële implementatie
 	- Regressietesten DAG Processing
 - Integreren logica offload in MongoDB in Apache Airflow
@@ -843,43 +890,55 @@ Zoals we zien dat de volledige architectuur kan onderverdeeld worden in een aant
 - Integreren Analyze dataset in Apache Airflow
 	- Toevoegen verwerking in DAG
 	- FTP Upload code toevoegen in DAG
+	- Testen
 - Uitbreiden technische documentatie
 - Tekenen Architectuur diagrammen
 	- Current Architecture
 	- Final Target Architecture
+- Tekenen Class Diagram
+- Refactoring/optimaliseren code
+- Extra documentatie schrijven (Functioneel, Target Architetecture, Implementatie Ontwerp/Code,...)
 - Reflecteren over opdracht (en documenteren bevindingen)
+- Volledig doornemen documentatie en optimaliseren documentatie
 
 ## Reflectie Projectopdracht
 - Manier van werken:
 	- Ik heb zo weinig mogelijk AI trachten te gebruiken
 		- Reden: in een leerfase denk ik dat je meer zaken opsteekt als je zelf zaken dient uit te zoeken
 		- Ik heb wel regelmatig AI in traditionele vorm gebruikt (vragen stellen via browser)
-		- Voor het data governance luik heb ik literatuur doorgenomen. Daarna aan AI gevraagd om alle belangrijke punten op te lijsten. Daarna verder aangevuld met eigen kennis en laten evalueren (iteratief proces)
+		- Voor het data governance luik heb ik literatuur doorgenomen. Daarna aan AI gevraagd om alle belangrijke punten op te lijsten. Daarna verder aangevuld met eigen kennis en laten evalueren door AI (iteratief proces)
 		- Voor het OLAP datamodel heb ik een model opgesteld en daarna laten evalueren door AI (iteratief proces)
-		- Voor de MCP code heb ik code via AI laten genereren
+		- Voor de MCP code heb ik deels code manueel gechreven en ook deels via AI laten genereren
 - Moeilijke punten:
 	- Data Engineering landschap verkennen en weg vinden in uitgebreid landschap:
 		- Veel soorten technologieën
 		- Diverse architecturen
-		- Cloud technologieën zijn ook erg uitgebreid
-	- Bijkomende zaken als Data Governance & Data Privacy die hun eigen complexiteit met zich meebrengen gaande van zaken als data lineage tot data inference, adertjes onder het gras als Data Provider inzake reponsabiliteit,...
-	- Google BigQuery: workarounds omdat free tier niet alles toe laat (vb. alles dient in een batch uitvoer te gebeuren, bepaalde DDL kan niet,...)
-	- Airflow verkennen (Operators & combinatie FTP connectie als resource in Airflow - versie verschil leidde tot moeilijkheid)
+		- Cloud technologieën zijn ook erg uitgebreid en het is soms moeilijk om de weg te vinden
+	- Bijkomende zaken als Data Governance & Data Privacy die hun eigen complexiteit met zich meebrengen:
+		- Zaken als data lineage, data inference,...
+		- Compliancy is een apart/uitgebreid domein
+		- Adertjes onder het gras zoals onverwachte responsabiliteiten als Data Provider (vb. verantwoordelijkheid inzake gedrag Data Consumer)
+	- Google BigQuery: workarounds omdat free tier niet alles toe laat
+		- Restrictie van inserts: enkel als Batch uitvoerbaar
+		- Restricties op DDL/DML instructies
+	- Airflow verkennen (Operators & combinatie FTP connectie als resource in Airflow - versie verschillen)
 	- Modellering: Kimball & Data Vault
 		- Data Vault kwam verwarrend over
 		- Kimball is erg uitgebreid
 		- Opzet uitgetekend en AI als sparring partner gebruikt
 	- Integratie van veel technologieën -> vele libraries met elk hun eigen syntax -> lastig om alles te blijven onthouden
-	- AI: alles lijkt een moving target, niet enkel technologieën maar ook manier van werken (vb. manier van werken AI vs Traditioneel)
-	- Experiment: MCP naar PostgreSQL lukte niet echt, vragen in natuurlijke taal stellen werkte niet echt goed
+	- AI: alles lijkt een moving target
+		- Technologieën zijn snel achterhaald
+		- Manier van werken/coderen (vb. traditioneel AI gebruik vs Vibe Coding, MCP, Agents, Multi-Agents,...)
+	- Experiment: MCP naar PostgreSQL lukte niet echt, MindsDB is nog in onderzoek
 - Verbeterpunten
 	- Security: passwords in docker compose files
-	- Security: SFTP
+	- Security: SFTP ipv FTP in Airflow Proces
 	- Misschien dat er in de data modellering nog wel zaken verbeterd kunnen worden
 	- Docker compose files zullen hier en daar wel verder geoptimaliseerd kunnen worden vermoed ik
 	- Race conditions als er meerdere workers zijn die bijvoorbeeld files willen accessen op het filesystem
 - To Do
-	- Verder uitwerken target architectuur (iteratief)
+	- Verder uitwerken Target Architecture (iteratief)
 	- Verder verdiepen in Apache Airflow (en alternatieven)
 	- Verder verdiepen in Cloud technologieën
 	- Data Modellering: Kimball en Data Vault verder bestuderen
