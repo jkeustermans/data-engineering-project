@@ -29,6 +29,7 @@
 	- Apache Airflow
 	- Google BigQuery
 	- MogoDB
+- Finale Target Architectuur
 - Journal
 - Reflectie Projectopdracht
 - Geraadpleegde bronnen
@@ -42,7 +43,7 @@ Bedoeling van dit document is om een high-level overzicht te geven van de techni
 
 Er zal tevens een sectie opgenomen worden waarin de progressie van het project beschreven wordt (zie sectie Journal). Dit dient een chronologisch beeld te geven welke activiteiten er hebben plaatsgevonden. 
 Het laatste deel van dit document zal nog twee extra zaken bevatten:
-- Een (ruwe) architectuur van het systeem zoals het in de praktijk ontwikkeld zou kunnen worden. Immers het project zoals het voor dit opleidingsonderdeel ontwikkeld is geweest, is een (sterk) vereenvoudigde vorm van een project dat werkelijk geïmplementeerd zal worden
+- Een (ruwe) architectuur van het systeem zoals het in de praktijk ontwikkeld zou kunnen worden. Immers het project zoals het voor dit opleidingsonderdeel ontwikkeld is geweest, is een vereenvoudigde vorm van een project dat werkelijk geïmplementeerd zal worden
 - Reflectie over het project. Dit wil zeggen: hoe heb ik het aangepakt, wat zijn de dingen die ik geleerd heb, welke moeilijkheden ben ik tegengekomen, welke stukken zijn suboptimaal en dienen verbeterd te worden voor de reële implementatie,...
 
 Het document eindigt tenslotte met bronverwijzingen.
@@ -53,6 +54,7 @@ Opmerking: om de tekst niet al te zwaar te maken zullen in dit document de meest
 
 ## Plan van aanpak
 In eerste instantie had ik een 4-tal fases gedefinieerd die ik zou volgen, startende met een eenvoudige Docker setup. Echter tijdens de ontwikkeling van bedrijfsprojecten wordt meestal in het begin van het project een aantal use cases geïdentificeerd die als risicovol worden aanzien. Deze worden dan reeds in de Elaboration Phase ontwikkeld zodat de risico's zo snel mogelijk gemitigeerd kunnen worden (of indien nodig, kan men vooraan het ontwikkelproces de nodige aanpassingen/alternatieven voorzien). Daarom heb ik besloten om een aantal technische integraties behorende tot de minimale opzet naar het begin van het ontwikkelproces te verplaatsen. Het gevolg is dat Apache Airflow naar het begin van het ontwikkelproces is getrokken.
+Voor verdere details inzake de aanpak (oa. gebruik van AI) verwijs ik naar de sectie 'Reflectie projctopdracht'.
 
 ## Functionele beschrijving (High-Level)
 De nadruk in dit project ligt op het opstellen van een ETL (en een Reverse ETL) Proces dat uitgevoerd zal worden door een Orchestrator library. Binnen deze orchestrator zal de workflow gedefinieerd worden (in de vorm van een Directed Acyclic Graph) die bestaat uit een aantal Tasks die onderling afhankelijk zijn. Deze Tasks zijn onderverdeeld in TaskGroups die toelaten om bepaalde Tasks in Parallel uit te voeren. In grote lijnen kan de verwerking als volgt worden omschreven:
@@ -62,12 +64,14 @@ De nadruk in dit project ligt op het opstellen van een ETL (en een Reverse ETL) 
 - Vervolgens wordt de eerste TaskGroup uitgevoerd waarbij er 2 parallelle processen worden uitgevoerd:
 	- Task 1: het uitlezen van de CSV bestanden, deze in een gedenormalizeerd model gieten (Kimball) en persisteren naar een Datawarehouse
 	- Task 2: het uitlezen van de CSV bestanden, deze in document-formaat gieten en vervolgens persisteren naar een document database
-- Als deze TaskGroup afgerond is dan wordt de volgende TaskGroup opgestart die tevens bestaat uit 2 taken:
+- Als deze TaskGroup afgerond is dan wordt de volgende TaskGroup opgestart die tevens bestaat uit 3 taken:
 	- Task 1: uitlezen Datawarehouse model en dit OLAP model identiek persisteren naar een Google BigQuery database
-	- Task 2: Reverse ETL: analyze van de datasets, generatie van grafieken in PNG bestanden, korte analyse van gehele dataset in CSV formaat gieten en alles terug uploaden naar de Inbounds folder op de FTP server
+	- Task 2: Reverse ETL(1): analyze van de datasets, generatie van grafieken in PNG bestanden en het maken van een korte analyse van de gehele dataset in CSV formaat
+	- Task 3: Reverse ETL(1): zorg ervoor dat de bestanden van de analyze terug op de FTP server terecht komen zodat deze door de domein experten (data scientists/onderzoekers) kunnen gedownload worden
 
 Schematisch voorgesteld:
-TODO: toevoegen DAG afbeelding Airflow
+
+![Data Engineering with Google Cloud Platform](documentation/Screenshot-DAG-Airflow.png)
 
 ## Architecturaal
 ### Algemeen
@@ -79,7 +83,7 @@ De opzet is voorlopig vrij eenvoudig. Via een webapplicatie kunnen ziekenhuizen 
 - Data Scientists en onderzoekers gegevens aanreiken in een formaat dat makkelijk te gebruiken is de R-code voor statistisch onderzoek
 - Data Sharing met externe partners (WHO, andere universiteiten/wetenschappelijke instellingen)
 Bedoeling is om een data-architectuur op te zetten waarbij gegevens geëxtraheerd, getransformeerd en opgeladen worden naar een formaat dat voldoet aan de eisen van de bovenstaande partijen.
-Belangrijk: de implementatie van het project zal een sterk vereenvoudigde opzet zijn van wat er in realiteit geïmplementeerd gaat worden. De finale opzet dient nog verder uitgewerkt te worden. Deze zal elementen bevatten zoals Database Replication. Binnen deze project opzet zal dit weggelaten worden en gaan we uit van een Staging Area waar we files opzetten die dan een (partiële) weerspiegeling zal zijn van de gegevens uit de OLTP Database.
+Belangrijk: de implementatie van het project zal een vereenvoudigde opzet zijn van wat er in realiteit geïmplementeerd gaat worden. De finale opzet dient nog verder uitgewerkt te worden. Deze zal elementen bevatten zoals Database Replication. Binnen deze project opzet zal dit weggelaten worden en gaan we uit van een Staging Area waar we files opzetten die dan een (partiële) weerspiegeling zal zijn van de gegevens uit de OLTP Database.
 #### Architectuur
 De **vereenvoudigde** opzet zal bestaan uit een aantal componenten die via Docker-compose opgezet worden (Single Host):
 - FTP Server zal fungeren als een Staging Area.
@@ -260,9 +264,9 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 	```
 	- De Inbound en Outbound folders zullen onderverdeeld worden in subfolders (conceptuele onderverdeling)
 		- Inbound = de data die zal geupload worden naar de FTP server
-			- Vb. de medical data files
-		- Outbound = de data die door andere processen (vb. Airflow) zal gedownload worden
 			- Vb. analyses die gebeurd zijn door bepaalde processen (vb. reverse ETL)
+		- Outbound = de data die door andere processen (vb. Airflow) zal gedownload worden
+			- Vb. de data files die als input gelden voor de DAG (Airflow verwerking)
 - Merk op dat in een bedrijf wellicht een full-blown Datalake zal gebruikt worden ipv. een FTP server (er is wel een beperkte literatuur doorgenomen mbt. mogelijke technologieën - zie sectie 'Geraadpleegde bronnen').
 
 ### Orchestrator
@@ -322,7 +326,8 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 - Er is binnen deze context geopteerd voor Kimball te gebruiken
 
 ### Document Database
-- MongoDB zal fungeren als document store
+- Er zal gebruik gemaakt worden van een Documentstore
+	- MongoDB
 - Consumers: externe partners
 - In het huidige project is er geopteerd om voor elke treatment 1 document te voorzien in de database
 - Er zijn verschillende manieren om hiermee om te gaan. Men zou ook kunnen geopteerd hebben om de treatment gerelateerde data op te slaan in aparte documenten en die dan te koppelen via keys.
@@ -335,6 +340,11 @@ Er zijn een aantal architecturale patronen die steeds terugkomen.
 	- Looker Studio = maken van dashboards (grafieken en tabellen). Vergelijkbaar met Power BI, Tableau
 	- VertexAI, BigQuery ML = voor Machine Learning doeleinden
 - Er wordt slechts een beperkt aantal records naar BigQuery weggeschreven omwille van restricties mbt. de free tier van GCP
+
+## Schematisch
+Hieronder staat een schematische weergave van de architectuur zoals deze opgezet is voor dit project.
+
+![Datamodel OLAP](documentation/Current-Architecture.png)
 
 ## Data Model
 ### Landingzone
@@ -550,6 +560,61 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 	- Aanmaak collection: db.createCollection("medical_documents")
 	- Doorzoeken collection: db.medical_documents.find()
 	- Verwijderen alle documenten: db.medical_records.remove({})
+
+## Finale Target Architectuur
+### Inleidend
+Zoals eerder gesteld is deze projectopdracht een vereenvoudigde versie van een project dat in latere fase binnen onze onderzoeksgroep geïmplementeerd zal worden. Binnen dit kader heb ik dan ook een voorbereidende high-level architectuur uitgetekend. Wellicht zullen er hier en daar nog elementen schuiven maar de bedoeling is hier om een architecturale oefening te maken die een real-world scenario beschrijft.
+### Beschrijving
+Hieronder volgt een korte/high-level beschrijving van de target architectuur.
+Zoals we zien dat de volledige architectuur kan onderverdeeld worden in een aantal segmenten.
+- OLTP gedeelte dat bestaat uit:
+	- Load Balancer die het verkeer verdeeld over de backend componenten
+	- Webcontainers (redundancy voor high availability) die inkomende vragen inzake de data-entry tool afhandelen
+	- Node voor Asycnhrone Processing (generatie statische R-rapporten, data-exports, data-imports,...) 
+	- Node voor Reporting
+	- Database Node
+- OLAP gedeelte en data pipeline(s). Hier zien we de volgende nodes:
+	- Landingzone met een aantal componenten
+		- Database (replica van Master OLTP DB)
+		- Filesystem voor klassieke data opslag
+		- Object Storage (dit zou bijvoorbeeld een MinIO kunnen worden, dit is echter nog nader te bepalen)
+	- Node voor Orchestrator
+		- Op deze node zal Apache Airflow komen te staan
+		- Hoe de finale opzet van Airflow eruit zal komen te zien zal nog te bekijken zijn (afhankelijk van de verwachte load en beschikbare financiële resources)
+			- Distributed met meerdere workers (CeleryExecutor)
+			- KubernetesExecutor (Kubernetes architectuur)
+			- LocalExecutor (single node)
+		- Er zullen meerdere data-pipelines voorzien moeten worden. Er zal minstens één data-pipeline dienen voorzien te worden voor elke externe partner
+	- Node voor de OLAP database
+		- Wellicht zal er hier een klassiek RDBMS systeem gebruikt worden
+		- Redenen:
+			- Onze data hoeveelheden zijn niet erg groot
+			- Kostenreductie (wegens weinig werkingsmiddelen)
+		- Deze OLAP database zal ook vanuit de Reporting Node gebruikt kunnen worden (vereenvoudigen/optimaliseren R-reporting code)
+		- Ook zullen de domein experten deze database kunnen gebruiken voor data-science doeleinden
+		- De OLAP database zal ook gebruikt worden om datasets aan te maken die voor externe partijen dienen aangemaakt te worden
+		- Eens deze aangemaakt zijn dan kunnen deze overgezet worden naar Cloud databases (vb. GCP, Azure, AWS)
+		- Door een lokale OLAP database op te vullen alvorens deze over te zetten naar een Cloud database krijgen we twee voordelen: 
+			- De data scientists van ons eigen onderzoeksteam kunnenn ook gebruik maken van deze database indien gewenst
+			- Het debuggen in geval van problemen is makkelijker. De testbaarheid gaat naar omhoog wat we kunnen de processing lokaal opstarten en onmiddellijk lokaal de data nakijken
+			- Door de verbeterde testbaarheid drukken we ook de kosten omdat we enkel data gaan doorsturen naar een Cloud Database indien we zeker zijn dat de verwerking correct is (geen extra kosten tgv. iteratieve testen)
+- Cloud gedeelte
+	- In de huidige architectuur is geopteerd voor GCP maar dit kan evengoed een Azure of AWS systeem zijn
+	- Voor database is er geopteerd voor BigQuery
+	- Een Cloud systeem biedt een aantal zaken out-of-the-box, waaronder onder andere:
+		- Integratie met AI/ML Tooling
+		- Integratie met BI-Tooling (Dashboards)
+		- Data Governance aspecten (auditing mechanismes, data-lineage,...)
+	- Belangrijk: er dient nog wel verder onderzocht te worden of er limiterende factoren zijn wat betreft het opladen van gegevens op een Cloud systeem.
+		- Door de huidige geografische verschuivingen kan het gevoelig liggen om data op een (Aemerikaans) Cloud systeem te zetten
+		- De policy van de externe partij kan ook bepaalde restricties opleggen (WHO is gevoelig voor de plaats van data-opslag)
+		- Andere compliancy factoren kunnen ook restricties opleggen
+	- Belangrijk is dat de data zowel 'in-rest' als 'in-transfer' geëncrypteerd dient te worden
+		- Wellicht zal er geopteerd worden voor de selectie van een Post-Quantum-Cryptography oplossing
+			- We willen het 'Harvest Now, Decrypt Later' probleem vanaf het begin afhandelen
+### Schematisch
+
+![Datamodel OLAP](documentation/Target-Architecture.png)
 
 ## Journal
 ### Week 16 feb
@@ -775,6 +840,9 @@ Hieronder staat een oplijsting van de aanwezige datasets met een high-level verk
 	- Visualiseren via Seaborn
 	- Generatie outputbestanden (PNG-files voor grafieken, txt voor beschrijving dataset)
 - Aanpassing docker image Airflow voor toevoegen libraries visualisatie (matplotlib, seaborn, PyQt5)
+- Integreren Analyze dataset in Apache Airflow
+	- Toevoegen verwerking in DAG
+	- FTP Upload code toevoegen in DAG
 - Uitbreiden technische documentatie
 - Tekenen Architectuur diagrammen
 	- Current Architecture
